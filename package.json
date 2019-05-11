@@ -1,0 +1,25 @@
+{
+  "name": "raidlogger",
+  "version": "1.0.0",
+  "description": "Tracks raid attendance and benched players.",
+  "main": "upload.js",
+  "dependencies": {
+    "ansi-256-colors": "^1.1.0",
+    "inquirer": "^6.2.2",
+    "inquirer-async": "^1.1.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ko0f/RaidLogger.git"
+  },
+  "author": "Ko0f",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ko0f/RaidLogger/issues"
+  },
+  "homepage": "https://github.com/ko0f/RaidLogger#readme"
+}
