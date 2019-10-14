@@ -5,7 +5,6 @@
     <Frame name="RaidLoggerFrame">
         <Scripts>
             <OnLoad>RaidLogger_OnLoad(self)</OnLoad>
-            <OnEvent>RaidLogger_OnEvent(event, arg1)</OnEvent>
         </Scripts>
     </Frame>
 </Ui>

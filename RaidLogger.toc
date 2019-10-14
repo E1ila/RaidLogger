@@ -1,6 +1,7 @@
-## Interface: 11200
+## Interface: 11302
 ## Title: RaidLogger
-## Notes: Saves raid attendance into a file.
+## Notes: Saves raid attendance into a file and logs loot distribution.
 ## SavedVariables: Store
+Deformat.lua
 RaidLogger.lua
 RaidLogger.xml
