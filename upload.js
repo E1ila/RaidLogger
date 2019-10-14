@@ -10,8 +10,15 @@ const
    colorWarning = colors.fg.getRgb(5, 5, 0),
    colorGreen = colors.fg.getRgb(0, 3, 0),
    colorInfoBright = colors.fg.getRgb(1, 2, 5),
-   colorEpic = colors.fg.getRgb(3, 0, 4),
    nocolor = colors.reset,
+   qualityColor = {
+      0: colors.fg.getRgb(3,3,3), // poor
+      1: colors.fg.getRgb(5,5,5), // common
+      2: colors.fg.getRgb(1,5,0), // uncommon
+      3: colors.fg.getRgb(0,2,4), // rare
+      4: colors.fg.getRgb(3,0,4), // epic
+      5: colors.fg.getRgb(0,4,2), // legendary
+   },
    classColor = {
       "Druid": colors.fg.getRgb(Math.round(5), Math.round(0.49*5), Math.round(0.04*5)),
       "Hunter": colors.fg.getRgb(Math.round(0.67*5), Math.round(0.83*5), Math.round(0.45*5)),
@@ -27,6 +34,11 @@ const
    fs = require("fs"),
    path = require('path')
 ;
+
+String.prototype.replaceAll = function(search, replacement) {
+   let target = this;
+   return target.split(search).join(replacement);
+};
 
 function playerColor(playerClass) {
    return classColor[playerClass] || colorInfo;
@@ -77,23 +89,69 @@ function searchRecursive(dir, filename, scanBackwards) {
    return null;
 }
 
+
+function parseLua(lua) {
+   let json = lua;
+   json = json.replaceAll('\t["', '\t"');
+   json = json.replaceAll('"] = ', '": ');
+   json = json.replaceAll('\t[', '\t"');
+   json = json.replaceAll('\tnil, --', '\tnull, --');
+   json = json.replaceAll('\t', "");
+   json = json.replaceAll('\r', "");
+
+   let firstVar = true;
+   const lines = json.split('\n');
+   for (let i = 0; i < lines.length; i++) {
+      if (lines[i].indexOf(' = {') !== -1) {
+         lines[i] = `${firstVar ? '"' : ', "'}${lines[i].replace(' = {', '": {')}`
+         firstVar = false;
+      }
+      if (lines[i].indexOf(' = nil') !== -1) {
+         lines[i] = `${firstVar ? '"' : ', "'}${lines[i].replace(' = nil', '": null')}`
+         firstVar = false;
+      }
+   }
+   json = lines.join('');
+
+   // convert arrays
+   let arrayIndex = 0;
+   let pos = json.indexOf(', -- [')
+   while (pos !== -1) {
+      if (json[pos-1] === '}') {
+         let j = pos - 2, count = 1;
+         while (count) {
+            if (json[j] == '}')
+               count++;
+            if (json[j] == '{')
+               count--;
+            j--;
+         }
+         j++;
+         json = json.substr(0, j) + `"${(arrayIndex++) + 1}": ` + json.substr(j, pos - j + 1) + json.substr(json.indexOf(']', pos) + 1);
+      } else {
+         let j = pos - 1;
+         while (json[j] !== '{' && json[j] !== ',')
+            j--;
+         j++;
+         json = json.substr(0, j) + `"${(arrayIndex++) + 1}": ` + json.substr(j, pos - j) + ',' + json.substr(json.indexOf(']', pos) + 1);
+      }
+      pos = json.indexOf(', -- [');
+   }
+   // lines[i] = lines[i].indexOf(', -- [') === -1 ? lines[i] : `"${i + 1}": ` + lines[i].split(', -- [')[0] + ',';
+
+   json = json.replaceAll(',}', '}');
+   json = '{' + json + '}';
+
+
+   return JSON.parse(json);
+}
+
 function readRaids(lua) {
    let raids, classes;
    const luaContent = fs.readFileSync(lua).toString('utf8');
    try {
       // convert LUA format to JSON format
-      let jsonContent =
-         luaContent
-            .replace(/\["/g, '"')
-            .replace(/"]/g, '"')
-            .replace(/\[/g, '"')
-            .replace(/]/g, '"')
-            .replace(/ = /g, ": ")
-            .replace(/Store: /g, "")
-            .replace(/[\t\n\r]/g, "")
-            .replace(/,}/g, "}")
-      ;
-      let store = JSON.parse(jsonContent);
+      let store = parseLua(luaContent)["Store"];
 
       const dateCompare = (left, right) => left.date.localeCompare(right.date);
       raids = Object.values(store['raids']).sort(dateCompare).reverse();
@@ -170,9 +228,9 @@ async function main() {
          console.log(`Benched:${colorInfo}\n  ${raid['benched'].join('\n  ')}${nocolor}\n`);
       console.log(`Loot:\n  ${Object.values(raid['loot'] || {}).map(o => {
          if (o['de'])
-            return `${colorGreen}Disenchanted ${colorEpic}[${o['item']}]${nocolor}`;
+            return `${colorGreen}Disenchanted ${qualityColor[o['quality']]}[${o['item']}]${nocolor}`;
          else 
-            return `${playerColor(classes[o['player']])}${o['player']} ${colorGreen}received ${colorEpic}[${o['item']}]${nocolor}`; 
+            return `${playerColor(classes[o['player']])}${o['player']} ${colorGreen}received ${qualityColor[o['quality']]}[${o['item']}]${nocolor}`; 
       }).join('\n  ')}${nocolor}\n`);
 
       answers = await inquirer.promptAsync([{

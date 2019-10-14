@@ -36,9 +36,6 @@ local IGNORED_ITEMS = {
     -- [1] = "Elementium Ore",
 }
 
-local LOOT_OTHER_RECEIVES = "(.+) receives loot: (.+)."
-local LOOT_YOU_RECEIVE = "You receive loot: (.+)."
-
 local COLOR_INSTANCE = "|cffff33ff"
 
 local QUALITY_POOR = 0 -- gray
@@ -212,9 +209,7 @@ local LootMsgStrings = {
     _G.LOOT_ITEM,                       -- %s receives loot: %s.
 }
 local LootSelfMsgStrings = {
-    _G.LOOT_ITEM_PUSHED_SELF_MULTIPLE,  -- You receive item: %sx%d.
 	_G.LOOT_ITEM_SELF_MULTIPLE,         -- You receive loot: %sx%d.
-	_G.LOOT_ITEM_PUSHED_SELF,           -- You receive item: %s.
 	_G.LOOT_ITEM_SELF,                  -- You receive loot: %s.
 }
 
