@@ -4,7 +4,7 @@
 // Written by Kof
 
 const
-   MAX_RAID_OPTIONS = 3,
+   MAX_RAID_OPTIONS = 20,
    colors = require('ansi-256-colors'),
    colorInfo = colors.fg.getRgb(0, 1, 4),
    colorWarning = colors.fg.getRgb(5, 5, 0),

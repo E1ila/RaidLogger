@@ -94,14 +94,14 @@ local function EndRaidReminder()
     print("|cFFFF962F RaidLogger |cFFFF0000 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 end
 
-function RaidLogger_OnLoad()
-    this:RegisterEvent("ADDON_LOADED");
-    this:RegisterEvent("RAID_ROSTER_UPDATE");
-    this:RegisterEvent("GROUP_ROSTER_UPDATE");
-    this:RegisterEvent("ENCOUNTER_END");
-    this:RegisterEvent("RAID_INSTANCE_WELCOME");
-    this:RegisterEvent("ZONE_CHANGED_NEW_AREA");
-    this:RegisterEvent("CHAT_MSG_LOOT");
+function RaidLogger_OnLoad(self)
+    self:RegisterEvent("ADDON_LOADED");
+    self:RegisterEvent("RAID_ROSTER_UPDATE");
+    self:RegisterEvent("GROUP_ROSTER_UPDATE");
+    self:RegisterEvent("ENCOUNTER_END");
+    self:RegisterEvent("RAID_INSTANCE_WELCOME");
+    self:RegisterEvent("ZONE_CHANGED_NEW_AREA");
+    self:RegisterEvent("CHAT_MSG_LOOT");
 
     SLASH_RaidLogger1 = "/rl"
     SlashCmdList["RaidLogger"] = RaidLogger_Main
