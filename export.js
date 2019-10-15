@@ -5,10 +5,12 @@
 
 const
    MAX_RAID_OPTIONS = 20,
+   USE_LAST_RAID = true,
    colors = require('ansi-256-colors'),
    colorInfo = colors.fg.getRgb(0, 1, 4),
    colorWarning = colors.fg.getRgb(5, 5, 0),
    colorGreen = colors.fg.getRgb(0, 3, 0),
+   colorGray = colors.fg.getRgb(3, 3, 3),
    colorInfoBright = colors.fg.getRgb(1, 2, 5),
    nocolor = colors.reset,
    qualityColor = {
@@ -56,8 +58,8 @@ function sortPlayerByClass(classes) {
 }
 
 function printUsageAndExit() {
-   console.log('USAGE: node upload.js [WEBSITE_API]');
-   console.log('WEBSITE_API = Uploads data to this website endpoint');
+   console.log('USAGE: node export.js [EXPORT_PATH]');
+   console.log('EXPORT_PATH = Where JSON output will be written');
    process.exit(1);
 }
 
@@ -178,6 +180,7 @@ function readRaids(lua) {
 }
 
 async function main() {
+   // console.log(process.argv.length);
    try {
       let wtfFile = searchRecursive(__dirname, 'WTF', 1);
       if (!wtfFile) {
@@ -193,24 +196,24 @@ async function main() {
       console.log(`\nUsing ${colorWarning}${luaFile}${nocolor}`);
 
       const {raids, classes} = readRaids(luaFile);
+      let answerIndex = 0
 
-// console.log(`Last raid:`);
-// console.log(raids);
+      if (!USE_LAST_RAID) {
+         let raidOptions = raids.map(o => `${o['date']} / ${o['zone']} / ${o['attendedCount']} participants, ${o['benchedCount']} benched`);
+         raidOptions.push('Cancel');
 
-      let raidOptions = raids.map(o => `${o['date']} / ${o['zone']} / ${o['attendedCount']} participants, ${o['benchedCount']} benched`);
-      raidOptions.push('Cancel');
+         console.log('');
+         let answers = await inquirer.promptAsync([{
+            type: 'list',
+            name: 'action',
+            message: 'Choose a raid:',
+            choices: raidOptions
+         }]);
+         answerIndex = raidOptions.indexOf(answers['action']);
 
-      console.log('');
-      let answers = await inquirer.promptAsync([{
-         type: 'list',
-         name: 'action',
-         message: 'Choose a raid:',
-         choices: raidOptions
-      }]);
-      const answerIndex = raidOptions.indexOf(answers['action']);
-
-      if (answerIndex === raidOptions.length - 1)
-         process.exit(0);
+         if (answerIndex === raidOptions.length - 1)
+            process.exit(0);
+      }
 
       const raid = raids[answerIndex];
 
@@ -233,16 +236,26 @@ async function main() {
             return `${playerColor(classes[o['player']])}${o['player']} ${colorGreen}received ${qualityColor[o['quality']]}[${o['item']}]${nocolor}`; 
       }).join('\n  ')}${nocolor}\n`);
 
+      const raidDateParts = raid['date'].split(' ')[0].split('-');
+      console.log(`\nPlayer,Item,Date\n${Object
+         .values(raid['loot'] || {})
+         .filter(o => !o['de'] && o['quality'] >= 4)
+         .map(o => `${o['player']},${o['item']},${raidDateParts[1]}/${raidDateParts[2]}/${raidDateParts[0]}`)
+         .join('\n')}${nocolor}\n`);
+
       answers = await inquirer.promptAsync([{
          type: 'list',
          name: 'action',
-         message: 'Proceed with upload?',
-         choices: ['Stop', 'Upload']
+         message: 'Proceed with export?',
+         choices: ['Stop', 'Export to JSON']
       }]);
 
-      if (answers['action'] === 'Upload') {
-         console.log('Uploading!');
+      if (answers['action'] === 'Export to JSON') {
+         const exportPath = process.argv.length < 3 ? '.' : process.argv[2];
+         const filename = `${raid['date'].replace(' ', '').replaceAll('-', '').replace(':', '')}_${raid['zone'].replaceAll(' ', '')}.json`;
+         fs.writeFileSync(path.join(exportPath, filename), JSON.stringify(raid));
       }
+
    } catch (e) {
       console.error(`Exception: ${e.message}`);
    }
