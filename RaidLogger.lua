@@ -5,8 +5,8 @@
 -- Time: 18:36
 --
 
-local VERSION = 0.1
-local MIN_RAID_PLAYERS = 1
+local VERSION = 1.0
+local MIN_RAID_PLAYERS = 10
 
 local TRACKED_INSTANCES = {
     [1] = "The Molten Core",
@@ -16,7 +16,7 @@ local TRACKED_INSTANCES = {
     [5] = "Ahn'Qiraj",
     [6] = "Ruins of Ahn'Qiraj",
     [7] = "Naxxramas",
-    [8] = "Ragefire Chasm"
+    -- [8] = "Ragefire Chasm",
 }
 
 local CLASS_COLOR = {
@@ -330,11 +330,11 @@ function RaidLogger_StartRaid()
         loot = {},
         lootCount = 0,
     }
-    out("Started a new raid.")
-
     if not Store.players then
         Store.players = {}
     end
+    LoggingCombat(true) -- start combat logging
+    out("Started a new raid.")
 end
 
 function RaidLogger_EndRaid()

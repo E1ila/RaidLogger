@@ -5,7 +5,7 @@
 
 const
    MAX_RAID_OPTIONS = 20,
-   USE_LAST_RAID = true,
+   USE_LAST_RAID = false,
    colors = require('ansi-256-colors'),
    colorInfo = colors.fg.getRgb(0, 1, 4),
    colorWarning = colors.fg.getRgb(5, 5, 0),
@@ -243,7 +243,7 @@ async function main() {
          .map(o => `${o['player']},${o['item']},${raidDateParts[1]}/${raidDateParts[2]}/${raidDateParts[0]}`)
          .join('\n')}${nocolor}\n`);
 
-      answers = await inquirer.promptAsync([{
+      let answers = await inquirer.promptAsync([{
          type: 'list',
          name: 'action',
          message: 'Proceed with export?',

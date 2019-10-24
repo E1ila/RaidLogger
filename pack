@@ -1,0 +1,10 @@
+cd ..
+rm -rf ~/tmp/RaidLogger
+#mkdir ~/tmp/RaidLogger
+cp -r RaidLogger ~/tmp/
+rm ~/tmp/RaidLogger/pack
+rm -rf ~/tmp/RaidLogger/.git
+rm -rf ~/tmp/RaidLogger/node_modules
+cd ~/tmp
+zip -9r RaidLogger_$1.zip RaidLogger -x \*.DS_Store -x \_MACOSX
+rm -rf ~/tmp/RaidLogger
