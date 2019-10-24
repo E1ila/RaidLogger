@@ -1,7 +1,7 @@
 ## Interface: 11302
 ## Title: RaidLogger
 ## Author: Kof @Shazzrah
-## Notes: Saves raid attendance into a file and logs loot distribution.
+## Notes: Logs raid attendance and loot distribution
 ## SavedVariables: Store
 Deformat.lua
 RaidLogger.lua

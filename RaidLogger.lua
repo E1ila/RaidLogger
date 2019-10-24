@@ -346,6 +346,7 @@ function RaidLogger_EndRaid()
         out("Ended raid to " .. COLOR_INSTANCE .. Store.activeRaid.zone .. "|r with " .. COLOR_INSTANCE .. Store.activeRaid.attendedCount .. "|r participants.")
     end
     Store.activeRaid = nil
+    LoggingCombat(false) -- stop combat logging
 end
 
 function RaidLogger_Bench(player)
