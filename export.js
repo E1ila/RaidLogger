@@ -91,7 +91,6 @@ function searchRecursive(dir, filename, scanBackwards) {
    return null;
 }
 
-
 function parseLua(lua) {
    let json = lua;
    json = json.replaceAll('\t["', '\t"');
@@ -150,10 +149,11 @@ function parseLua(lua) {
 
 function readRaids(lua) {
    let raids, classes;
-   const luaContent = fs.readFileSync(lua).toString('utf8');
+   let luaContent = fs.readFileSync(lua).toString('utf8');
+   luaContent = luaContent.replace("Store = nil", "")
    try {
       // convert LUA format to JSON format
-      let store = parseLua(luaContent)["Store"];
+      let store = parseLua(luaContent)["RaidLoggerStore"];
 
       const dateCompare = (left, right) => left.date.localeCompare(right.date);
       raids = Object.values(store['raids']).sort(dateCompare).reverse();

@@ -1,8 +1,9 @@
 ## Interface: 11302
 ## Title: RaidLogger
-## Author: Kof @Shazzrah
-## Notes: Logs raid attendance and loot distribution
-## SavedVariables: Store
+## Author: Kof @Shazzrah (kof_kof on twitch)
+## Notes: Auto logs raid attendance and loot distribution
+## SavedVariables: Store, RaidLoggerStore
 Deformat.lua
+Buffs.lua
 RaidLogger.lua
 RaidLogger.xml

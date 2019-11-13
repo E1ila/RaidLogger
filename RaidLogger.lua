@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 1.0
+local VERSION = 1.1
 local MIN_RAID_PLAYERS = 10
 
 local TRACKED_INSTANCES = {
@@ -16,7 +16,7 @@ local TRACKED_INSTANCES = {
     [5] = "Ahn'Qiraj",
     [6] = "Ruins of Ahn'Qiraj",
     [7] = "Naxxramas",
-    -- [8] = "Ragefire Chasm",
+    [8] = "Ragefire Chasm",
 }
 
 local CLASS_COLOR = {
@@ -45,7 +45,11 @@ local QUALITY_RARE = 3 -- blue
 local QUALITY_EPIC = 4 -- purple
 local QUALITY_LEGENDARY = 5 -- orange
 
-Store = {
+local BUFF_CHECK_SECONDS = 60 
+
+local lastBuffCheck = 0
+
+RaidLoggerStore = {
     raids = {},
     activeRaid = nil,
     players = {},
@@ -99,7 +103,7 @@ end
 local function ConcatPlayers(tab) 
     local st = ""
     for _, name in ipairs(tab) do
-        st = st .. CLASS_COLOR[Store.players[name] or "Unknown"] .. name .. "|r "
+        st = st .. CLASS_COLOR[RaidLoggerStore.players[name] or "Unknown"] .. name .. "|r "
     end 
     return st
 end 
@@ -113,7 +117,7 @@ local function FixPlayerName(player)
 end
 
 local function ColorName(who)
-    return CLASS_COLOR[Store.players[who] or "Unknown"] .. who .. "|r"
+    return CLASS_COLOR[RaidLoggerStore.players[who] or "Unknown"] .. who .. "|r"
 end 
 
 local function GetNumRaidMembers() 
@@ -143,7 +147,8 @@ function RaidLogger_OnLoad(self)
     self:RegisterEvent("ZONE_CHANGED_NEW_AREA");
     self:RegisterEvent("CHAT_MSG_LOOT");
 
-    self:SetScript("OnEvent", function(self, event, ...) RaidLogger_OnEvent(event, ...) end);
+    self:SetScript("OnEvent", function(self, event, ...) RaidLogger_OnEvent(event, ...) end)
+    self:SetScript("OnUpdate", function(self, ...) RaidLogger_OnUpdate(...) end)
 
     SLASH_RaidLogger1 = "/rl"
     SlashCmdList["RaidLogger"] = RaidLogger_Main
@@ -151,11 +156,25 @@ function RaidLogger_OnLoad(self)
     out("Logs raid attendance into a file. Write |cFF00FF00/rl help|r for a list of commands.")
 end
 
+function RaidLogger_OnUpdate()
+    if RaidLoggerStore and RaidLoggerStore.activeRaid and time() - lastBuffCheck >= BUFF_CHECK_SECONDS then 
+        -- out("checking buffs...")
+        if not RaidLoggerStore.activeRaid.buffs then RaidLoggerStore.activeRaid.buffs = {} end 
+        lastBuffCheck = time() 
+        RaidLogger_CheckBuffs(RaidLoggerStore.activeRaid.buffs)
+    end 
+end 
+
 function RaidLogger_OnEvent(event, arg1)
     if event == "ADDON_LOADED" then
         if arg1 == "RaidLogger" then
             -- saved variables loaded
-            if Store and Store.activeRaid then
+            if Store and Store.raids and #Store.raids > 0 and (not RaidLoggerStore or not RaidLoggerStore.raids or #RaidLoggerStore.raids == 0) then 
+                RaidLoggerStore = Store 
+                Store = nil 
+            end 
+            if RaidLoggerStore and RaidLoggerStore.activeRaid then
+                LoggingCombat(true) -- resume combat logging
                 EndRaidReminder()
             end
         end
@@ -168,11 +187,11 @@ function RaidLogger_OnEvent(event, arg1)
             end
         elseif event == "CHAT_MSG_LOOT" then
             local zone = InTrackedInstance()
-            if zone and Store.activeRaid then
+            if zone and RaidLoggerStore.activeRaid then
                 RaidLogger_ParseLootMessage(arg1, zone)
             end
         elseif event == "RAID_ROSTER_UPDATE" or event == "GROUP_ROSTER_UPDATE" or event == "ENCOUNTER_END" then
-            if Store and Store.activeRaid then
+            if RaidLoggerStore and RaidLoggerStore.activeRaid then
                 if GetNumRaidMembers() > 1 then
                     RaidLogger_UpdateRaid()
                 else
@@ -189,7 +208,7 @@ local function LogLoot(who, loot, quantity, zone)
 
     if who and quality >= QUALITY_UNCOMMON and not tableTextLookup(IGNORED_ITEMS, vItemName) then
         out("Logged loot: " .. ColorName(who) .. " received " .. loot .. " at " .. COLOR_INSTANCE .. zone .. "|r")
-        table.insert(Store.activeRaid.loot, {
+        table.insert(RaidLoggerStore.activeRaid.loot, {
             player = who,
             item = itemName,
             datetime = date("%y-%m-%d %H:%M"),
@@ -200,7 +219,7 @@ local function LogLoot(who, loot, quantity, zone)
             de = 0,
             os = 0,
         })
-        Store.activeRaid.lootCount = Store.activeRaid.lootCount + 1
+        RaidLoggerStore.activeRaid.lootCount = RaidLoggerStore.activeRaid.lootCount + 1
     end
 end
 
@@ -257,54 +276,54 @@ function RaidLogger_Main(msg)
             err("Missing player name!")
         end
     elseif  "DE" == cmd then
-        if not Store.activeRaid then
+        if not RaidLoggerStore.activeRaid then
             out("No active raid!")
-        elseif Store.activeRaid.lootCount == 0 then
+        elseif RaidLoggerStore.activeRaid.lootCount == 0 then
             out("No loot logged!")
         else
-            if Store.activeRaid.loot[Store.activeRaid.lootCount].de then
-                Store.activeRaid.loot[Store.activeRaid.lootCount].de = 0
-                out(Store.activeRaid.loot[Store.activeRaid.lootCount].item .. "|r |cFFaaaa00unmarked|r as disenchanted")
+            if RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].de then
+                RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].de = 0
+                out(RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].item .. "|r |cFFaaaa00unmarked|r as disenchanted")
             else
-                Store.activeRaid.loot[Store.activeRaid.lootCount].de = 1
-                out(Store.activeRaid.loot[Store.activeRaid.lootCount].item .. "|r marked as disenchanted")
+                RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].de = 1
+                out(RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].item .. "|r marked as disenchanted")
             end
         end
     elseif  "OS" == cmd then
-        if not Store.activeRaid then
+        if not RaidLoggerStore.activeRaid then
             out("No active raid!")
-        elseif Store.activeRaid.lootCount == 0 then
+        elseif RaidLoggerStore.activeRaid.lootCount == 0 then
             out("No loot logged!")
         else
-            if Store.activeRaid.loot[Store.activeRaid.lootCount].os then
-                Store.activeRaid.loot[Store.activeRaid.lootCount].os = 0
-                out(Store.activeRaid.loot[Store.activeRaid.lootCount].item .. "|r |cFFaaaa00unmarked|r as an off-spec item")
+            if RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].os then
+                RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].os = 0
+                out(RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].item .. "|r |cFFaaaa00unmarked|r as an off-spec item")
             else
-                Store.activeRaid.loot[Store.activeRaid.lootCount].os = 1
-                out(Store.activeRaid.loot[Store.activeRaid.lootCount].item .. "|r marked as an off-spec item")
+                RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].os = 1
+                out(RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].item .. "|r marked as an off-spec item")
             end
         end
     elseif  "P" == cmd then
-        if Store.activeRaid then
-            out("Raid started at " .. COLOR_INSTANCE .. Store.activeRaid.date)
-            if Store.activeRaid.zone then
-                out("Zone " .. COLOR_INSTANCE .. Store.activeRaid.zone)
+        if RaidLoggerStore.activeRaid then
+            out("Raid started at " .. COLOR_INSTANCE .. RaidLoggerStore.activeRaid.date)
+            if RaidLoggerStore.activeRaid.zone then
+                out("Zone " .. COLOR_INSTANCE .. RaidLoggerStore.activeRaid.zone)
             end
-            if Store.activeRaid.attendedCount > 0 then
-                out("Attended " .. ConcatPlayers(Store.activeRaid.attended))
+            if RaidLoggerStore.activeRaid.attendedCount > 0 then
+                out("Attended " .. ConcatPlayers(RaidLoggerStore.activeRaid.attended))
             else
                 out("No players attended.")
             end
-            if Store.activeRaid.benchedCount > 0 then
-                out("Benched " .. ConcatPlayers(Store.activeRaid.benched))
+            if RaidLoggerStore.activeRaid.benchedCount > 0 then
+                out("Benched " .. ConcatPlayers(RaidLoggerStore.activeRaid.benched))
             end
         else
             out("No active raid.")
         end
     elseif  "DISCARD" == cmd then
-        if Store.activeRaid then
+        if RaidLoggerStore.activeRaid then
             out("Raid has been discarded.")
-            Store.activeRaid = nil
+            RaidLoggerStore.activeRaid = nil
         else
             out("No active raid.")
         end
@@ -320,7 +339,7 @@ function RaidLogger_StartRaid()
     -- flush previous raid
     RaidLogger_EndRaid()
 
-    Store.activeRaid = {
+    RaidLoggerStore.activeRaid = {
         date = date("%y-%m-%d %H:%M"),
         attended = {},
         attendedCount = 0,
@@ -329,51 +348,52 @@ function RaidLogger_StartRaid()
         zone = nil,
         loot = {},
         lootCount = 0,
+        buffs = {}
     }
-    if not Store.players then
-        Store.players = {}
+    if not RaidLoggerStore.players then
+        RaidLoggerStore.players = {}
     end
     LoggingCombat(true) -- start combat logging
     out("Started a new raid.")
 end
 
 function RaidLogger_EndRaid()
-    if Store.activeRaid then
-        if not Store.activeRaid.zone then
-            Store.activeRaid.zone = "Unknown"
+    if RaidLoggerStore.activeRaid then
+        if not RaidLoggerStore.activeRaid.zone then
+            RaidLoggerStore.activeRaid.zone = "Unknown"
         end
-        table.insert(Store.raids, Store.activeRaid)
-        out("Ended raid to " .. COLOR_INSTANCE .. Store.activeRaid.zone .. "|r with " .. COLOR_INSTANCE .. Store.activeRaid.attendedCount .. "|r participants.")
+        table.insert(RaidLoggerStore.raids, RaidLoggerStore.activeRaid)
+        out("Ended raid to " .. COLOR_INSTANCE .. RaidLoggerStore.activeRaid.zone .. "|r with " .. COLOR_INSTANCE .. RaidLoggerStore.activeRaid.attendedCount .. "|r participants.")
     end
-    Store.activeRaid = nil
+    RaidLoggerStore.activeRaid = nil
     LoggingCombat(false) -- stop combat logging
 end
 
 function RaidLogger_Bench(player)
-    if not HasValue(Store.activeRaid.benched, player) then
+    if not HasValue(RaidLoggerStore.activeRaid.benched, player) then
         out("Benching " .. ColorName(player))
-        table.insert(Store.activeRaid.benched, player)
-        Store.activeRaid.benchedCount = Store.activeRaid.benchedCount + 1;
+        table.insert(RaidLoggerStore.activeRaid.benched, player)
+        RaidLoggerStore.activeRaid.benchedCount = RaidLoggerStore.activeRaid.benchedCount + 1;
     end
     -- remove attended player from benched
-    if RemoveValue(Store.activeRaid.attended, player) then
+    if RemoveValue(RaidLoggerStore.activeRaid.attended, player) then
         out("Unattending " .. ColorName(player))
-        Store.activeRaid.attendedCount = Store.activeRaid.attendedCount - 1;
+        RaidLoggerStore.activeRaid.attendedCount = RaidLoggerStore.activeRaid.attendedCount - 1;
     end
 end
 
 function RaidLogger_Attend(player, warnExists)
-    if not HasValue(Store.activeRaid.attended, player) then
+    if not HasValue(RaidLoggerStore.activeRaid.attended, player) then
         out("Adding " .. ColorName(player))
-        table.insert(Store.activeRaid.attended, player)
-        Store.activeRaid.attendedCount = Store.activeRaid.attendedCount + 1;
+        table.insert(RaidLoggerStore.activeRaid.attended, player)
+        RaidLoggerStore.activeRaid.attendedCount = RaidLoggerStore.activeRaid.attendedCount + 1;
     elseif warnExists then
         out("Ignoring " .. ColorName(player) .. ", already logged")
     end
     -- remove attended player from benched
-    if RemoveValue(Store.activeRaid.benched, player) then
+    if RemoveValue(RaidLoggerStore.activeRaid.benched, player) then
         out("Unbenching " .. ColorName(player))
-        Store.activeRaid.benchedCount = Store.activeRaid.benchedCount - 1;
+        RaidLoggerStore.activeRaid.benchedCount = RaidLoggerStore.activeRaid.benchedCount - 1;
     end
 end
 
@@ -387,15 +407,15 @@ function RaidLogger_UpdateRaid()
 
     -- out("Updating raid...")
 
-    if not Store.activeRaid then
+    if not RaidLoggerStore.activeRaid then
         RaidLogger_StartRaid();
     end
 
     -- save zone
-    if not Store.activeRaid.zone then
+    if not RaidLoggerStore.activeRaid.zone then
         local zone = InTrackedInstance()
         if zone then
-            Store.activeRaid.zone = zone
+            RaidLoggerStore.activeRaid.zone = zone
             out("Zone: " .. COLOR_INSTANCE .. zone)
         else
             err("Zone " .. COLOR_INSTANCE .. GetZoneText() .. "|r couldn't be identified!")
@@ -408,7 +428,7 @@ function RaidLogger_UpdateRaid()
         if name then
             RaidLogger_Attend(name)
         end
-        Store.players[name] = class
+        RaidLoggerStore.players[name] = class
     end
 
     -- out("Attendance updated.")
