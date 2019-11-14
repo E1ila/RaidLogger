@@ -6,11 +6,17 @@
 const
    MAX_RAID_OPTIONS = 20,
    USE_LAST_RAID = false,
+   moment = require('moment'),
    colors = require('ansi-256-colors'),
    colorInfo = colors.fg.getRgb(0, 1, 4),
    colorWarning = colors.fg.getRgb(5, 5, 0),
+   colorBrown = colors.fg.getRgb(4, 2, 1),
    colorGreen = colors.fg.getRgb(0, 3, 0),
+   colorPurple = colors.fg.getRgb(3, 1, 2),
+   colorBrightPurple = colors.fg.getRgb(3, 0, 4),
+   colorDarkGray = colors.fg.getRgb(2, 2, 2),
    colorGray = colors.fg.getRgb(3, 3, 3),
+   colorWhite = colors.fg.getRgb(4, 4, 4),
    colorInfoBright = colors.fg.getRgb(1, 2, 5),
    nocolor = colors.reset,
    qualityColor = {
@@ -34,8 +40,181 @@ const
    },
    inquirer = require("inquirer-async"),
    fs = require("fs"),
-   path = require('path')
-;
+   path = require('path'),
+   buffColor = {
+      "Consumable": colorPurple,
+      "Flask": colorBrightPurple,
+      "World": colorBrown,
+   };
+
+const BUFFS = {
+   "22888" : {
+       "name": "Rallying Cry of the Dragonslayer",
+       "desc": "Dragonslayer",
+       "type": "World",
+       "score": 5,
+   },
+   "15366" : {
+       "name": "Songflower Serenade",
+       "desc": "Songflower",
+       "type": "World",
+       "score": 5,
+   },
+   "22817" : {
+       "name": "Fengus' Ferocity",
+       "desc": "DMT AP",
+       "type": "World",
+       "score": 5,
+       "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
+   },
+   "22820" : {
+       "name": "Slip'kik's Savvy",
+       "desc": "DMT Crit",
+       "type": "World",
+       "score": 3,
+   },
+   "22818" : {
+       "name": "Mol'dar's Moxie",
+       "desc": "DMT Stamina",
+       "type": "World",
+       "score": 5,
+   },
+   "17549" : {
+      "name": "Greater Arcane Protection",
+      "desc": "Greater Arcane Protection Potion",
+      "type": "Consumable",
+      "score": 50,
+      "onetime": true,
+  },
+   "17543" : {
+       "name": "Greater Fire Protection",
+       "desc": "Greater Fire Protection Potion",
+       "type": "Consumable",
+       "score": 100,
+       "onetime": true,
+   },
+   "7233" : {
+       "name": "Fire Protection",
+       "type": "Consumable",
+       "score": 50,
+       "onetime": true,
+   },
+   "17548" : {
+       "name": "Greater Shadow Protection",
+       "desc": "Greater Shadow Protection Potion",
+       "type": "Consumable",
+       "score": 100,
+       "onetime": true,
+   },
+   "7242" : {
+       "name": "Shadow Protection",
+       "desc": "Shadow Protection Potion",
+       "type": "Consumable",
+       "score": 50,
+       "onetime": true,
+   },
+   "17546" : {
+       "name": "Greater Nature Protection",
+       "desc": "Greater Nature Protection Potion",
+       "type": "Consumable",
+       "score": 100,
+       "onetime": true,
+   },
+   "7254" : {
+       "name": "Nature Protection",
+       "desc": "Nature Protection Potion",
+       "type": "Consumable",
+       "score": 50,
+       "onetime": true,
+   },
+   "17544" : {
+       "name": "Greater Frost Protection",
+       "desc": "Greater Frost Protection Potion",
+       "type": "Consumable",
+       "score": 100,
+       "onetime": true,
+   },
+   "7239" : {
+       "name": "Frost Protection",
+       "desc": "Frost Protection Potion",
+       "type": "Consumable",
+       "score": 50,
+       "onetime": true,
+   },
+   "17539" : {
+       "name": "Greater Arcane Elixir",
+       "type": "Consumable",
+       "score": 5,
+       "ignore": ["Warrior", "Rogue", "Hunter"],
+   },
+   "11474" : {
+       "name": "Elixir of Shadow Power",
+       "type": "Consumable",
+       "score": 5,
+       "ignore": ["Mage", "Shaman"],
+   },
+   "17538" : {
+       "name": "Elixir of the Mongoose",
+       "type": "Consumable",
+       "score": 5,
+       "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
+   },
+   "16326" : {
+       "name": "Juju Ember",
+       "desc": "Fire Res Juju",
+       "type": "Consumable",
+       "score": 20,
+   },
+   "16329" : {
+       "name": "Juju Might",
+       "desc": "Attack Power Juju",
+       "type": "Consumable",
+       "score": 20,
+       "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
+   },
+   "16323" : {
+       "name": "Juju Power",
+       "desc": "Strength Juju",
+       "type": "Consumable",
+       "score": 20,
+       "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
+   },
+   "16322" : {
+       "name": "Juju Flurry",
+       "desc": "Attack Speed Juju",
+       "type": "Consumable",
+       "score": 20,
+       "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
+   },
+   "16325" : {
+       "name": "Juju Chill",
+       "desc": "Frost Res Juju",
+       "type": "Consumable",
+       "score": 20,
+   },
+   "16321" : {
+       "name": "Juju Escape",
+       "desc": "Dodge Juju",
+       "type": "Consumable",
+       "score": 20,
+       "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
+   },
+   "17628" : {
+       "name": "Supreme Power",
+       "type": "Flask",
+       "score": 20,
+   },
+   "17626" : {
+       "name": "Flask of the Titans",
+       "type": "Flask",
+       "score": 20,
+   },
+   "17627" : {
+       "name": "Distilled Wisdom",
+       "type": "Flask",
+       "score": 20,
+   },
+}
 
 String.prototype.replaceAll = function(search, replacement) {
    let target = this;
@@ -179,9 +358,28 @@ function readRaids(lua) {
    return {raids, classes};
 }
 
+function getBuffString(playerClass, buffs) {
+   let strings = [];
+   let asArr = [];
+   let score = 0;
+   Object.keys(buffs).forEach(spellId => {
+      let minutes = buffs[spellId];
+      if (!BUFFS[spellId].ignore || BUFFS[spellId].ignore.indexOf(playerClass) == -1)
+         score += (BUFFS[spellId].onetime ? BUFFS[spellId].score : BUFFS[spellId].score * minutes);
+      asArr.push({spellId, minutes});
+   });
+   let text = ` ${colorWhite}${(''+score).padStart(6, ' ')}  ` + asArr
+      .sort((a, b) => b.minutes - a.minutes)
+      .map(buff => `${buffColor[BUFFS[buff.spellId].type]}${BUFFS[buff.spellId].name} ${colorGray}${buff.minutes}m`)
+      .join(`${colorDarkGray}, `);
+   return {score, text};
+}
+
 async function main() {
    // console.log(process.argv.length);
    try {
+      const exportPath = process.argv.length < 3 ? '.' : process.argv[2];
+
       let wtfFile = searchRecursive(__dirname, 'WTF', 1);
       if (!wtfFile) {
          console.error(`Couldn't find WoW root folder! Make sure to run this file somewhere within your WoW folder, or one of its sub-folders`);
@@ -194,6 +392,9 @@ async function main() {
          process.exit(1);
       }
       console.log(`\nUsing ${colorWarning}${luaFile}${nocolor}`);
+
+      const backupFilename = `backup-${moment().format('YYYYMMDDHHmmss')}.lua`;
+      fs.copyFileSync(luaFile, path.join(exportPath, backupFilename))
 
       const {raids, classes} = readRaids(luaFile);
       let answerIndex = 0
@@ -217,16 +418,19 @@ async function main() {
 
       const raid = raids[answerIndex];
 
-      let playerByClass = {};
-      raid['attended']
+      let attendedPlayers = raid['attended']
          .sort(sortPlayerByClass(classes))
-         .forEach(p => playerByClass[classes[p]] = (playerByClass[classes[p]] || []).concat(`${playerColor(classes[p])}${p}`));
-      const playersGroupedByClass =
-         Object.values(playerByClass)
-            .map(players => players.join(", "))
-            .join('\n  ');
+         .map(p => ({p, buffs: getBuffString(classes[p], raid.buffs[p])}))
+         .sort((a, b) => b.buffs.score - a.buffs.score)
+         .map(o => `  ${playerColor(classes[o.p])}${o.p.padEnd(12, ' ')}${nocolor} ${o.buffs.text}`)
+         .join('\n  ');
+         // .forEach(p => playerByClass[classes[p]] = (playerByClass[classes[p]] || []).concat(`${playerColor(classes[p])}${p}`));
+      // const playersGroupedByClass =
+      //    Object.values(playerByClass)
+      //       .map(players => players.join(", "))
+      //       .join('\n  ');
 
-      console.log(`\nParticipants:\n  ${playersGroupedByClass}${nocolor}\n`);
+      console.log(`\nParticipants:\n  ${attendedPlayers}${nocolor}\n`);
       if (raid['benched'] && raid['benched'].length)
          console.log(`Benched:${colorInfo}\n  ${raid['benched'].join('\n  ')}${nocolor}\n`);
       console.log(`Loot:\n  ${Object.values(raid['loot'] || {}).map(o => {
@@ -251,13 +455,12 @@ async function main() {
       }]);
 
       if (answers['action'] === 'Export to JSON') {
-         const exportPath = process.argv.length < 3 ? '.' : process.argv[2];
          const filename = `${raid['date'].replace(' ', '').replaceAll('-', '').replace(':', '')}_${raid['zone'].replaceAll(' ', '')}.json`;
          fs.writeFileSync(path.join(exportPath, filename), JSON.stringify(raid));
       }
 
    } catch (e) {
-      console.error(`Exception: ${e.message}`);
+      console.error(`Exception: ${e.stack}`);
    }
 }
 

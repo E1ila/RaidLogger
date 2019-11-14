@@ -6,7 +6,8 @@
   "dependencies": {
     "ansi-256-colors": "^1.1.0",
     "inquirer": "^6.2.2",
-    "inquirer-async": "^1.1.0"
+    "inquirer-async": "^1.1.0",
+    "moment": "^2.24.0"
   },
   "devDependencies": {},
   "scripts": {

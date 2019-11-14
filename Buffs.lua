@@ -75,6 +75,10 @@ local BUFFS = {
         name = "Elixir of the Mongoose",
         type = "Consumable",
     },
+    ["11405"] = {
+        name = "Elixir of the Giants",
+        type = "Consumable",
+    },
     ["16326"] = {
         name = "Juju Ember",
         desc = "Fire Res Juju",
