@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 1.3
+local VERSION = 1.4
 local MIN_RAID_PLAYERS = 10
 
 local TRACKED_INSTANCES = {
