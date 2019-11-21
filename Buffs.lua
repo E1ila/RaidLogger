@@ -7,23 +7,48 @@ local BUFFS = {
     ["15366"] = {
         name = "Songflower Serenade",
         desc = "Songflower",
-        type = "World"
+        type = "World",
     },
     ["22817"] = {
         name = "Fengus' Ferocity",
         desc = "DMT AP",
-        type = "World"
+        type = "World",
     },
     ["22820"] = {
         name = "Slip'kik's Savvy",
         desc = "DMT Crit",
-        type = "World"
+        type = "World",
     },
     ["22818"] = {
         name = "Mol'dar's Moxie",
         desc = "DMT Stamina",
-        type = "World"
+        type = "World",
     },
+    ["3593"] = {
+        name = "Health II",
+        desc = "Elixir of Fortitude",
+        type = "Consumable",
+    },
+    ["3222"] = {
+        name = "Regeneration (6 hp5)",
+        desc = "Strong Troll's Blood Potion",
+        type = "Consumable",
+     },
+     ["3223"] = {
+        name = "Regeneration (12 hp5)",
+        desc = "Mighty Troll's Blood Potion",
+        type = "Consumable",
+     },
+     ["24361"] = {
+        name = "Regeneration (20 hp5)",
+        desc = "Major Troll's Blood Potion",
+        type = "Consumable",
+     },
+     ["24363"] = {
+        name = "Mana Regeneration (12 mp5)",
+        desc = "Mageblood Potion",
+        type = "Consumable",
+     },
     ["17543"] = {
         name = "Greater Fire Protection",
         desc = "Greater Fire Protection Potion",
@@ -120,6 +145,73 @@ local BUFFS = {
     ["17627"] = {
         name = "Distilled Wisdom",
         type = "Flask",
+    },
+    ["24870"] = {
+        name = "Well Fed (?? sta, ?? spi)",
+        type = "Food",
+    },
+    ["19705"] = {
+        name = "Well Fed (1 sta, 1 spi)",
+        type = "Food",
+    },
+    ["19706"] = {
+        name = "Well Fed (3 sta, 3 spi)",
+        type = "Food",
+    },
+    ["19709"] = {
+        name = "Well Fed (7 sta, 7 spi)",
+        type = "Food",
+    },
+    ["19710"] = {
+        name = "Well Fed (11 sta, 11 spi)",
+        type = "Food",
+    },
+    ["19711"] = {
+        name = "Well Fed (13 sta, 13 spi)",
+        type = "Food",
+    },
+    ["25694"] = {
+        name = "Well Fed (2 mp5)",
+        type = "Food",
+    },
+    ["25941"] = {
+        name = "Well Fed (5 mp5)",
+        type = "Food",
+    },
+    ["18194"] = {
+        name = "Mana Regeneration (7 mp5)",
+        desc = "Nightfin Soup",
+        type = "Food",
+    },
+    ["22730"] = {
+        name = "Increased Intellect (9 int)",
+        desc = "Runn Tum Tuber Surprise",
+        type = "Food",
+    },
+    ["18192"] = {
+        name = "Increased Agility (9 agi)",
+        desc = "Grilled Squid",
+        type = "Food",
+    },
+    ["24799"] = {
+        name = "Well Fed (19 str)",
+        desc = "Smoked Desert Dumpling",
+        type = "Food",
+    },
+    ["18284"] = {
+        name = "Gordok Green Grog (9 sta)",
+        desc = "DMT beer",
+        type = "Alcohol",
+    },
+    ["22790"] = {
+        name = "Kreeg's Stout Beatdown (25 spi, -5 int)",
+        desc = "DMT beer",
+        type = "Alcohol",
+    },
+    ["25804"] = {
+        name = "Rumsey Rum Black Label (15 sta)",
+        desc = "Fishing",
+        type = "Alcohol",
     },
 }
 

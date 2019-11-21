@@ -20,23 +20,23 @@ const
    colorInfoBright = colors.fg.getRgb(1, 2, 5),
    nocolor = colors.reset,
    qualityColor = {
-      0: colors.fg.getRgb(3,3,3), // poor
-      1: colors.fg.getRgb(5,5,5), // common
-      2: colors.fg.getRgb(1,5,0), // uncommon
-      3: colors.fg.getRgb(0,2,4), // rare
-      4: colors.fg.getRgb(3,0,4), // epic
-      5: colors.fg.getRgb(0,4,2), // legendary
+      0: colors.fg.getRgb(3, 3, 3), // poor
+      1: colors.fg.getRgb(5, 5, 5), // common
+      2: colors.fg.getRgb(1, 5, 0), // uncommon
+      3: colors.fg.getRgb(0, 2, 4), // rare
+      4: colors.fg.getRgb(3, 0, 4), // epic
+      5: colors.fg.getRgb(0, 4, 2), // legendary
    },
    classColor = {
-      "Druid": colors.fg.getRgb(Math.round(5), Math.round(0.49*5), Math.round(0.04*5)),
-      "Hunter": colors.fg.getRgb(Math.round(0.67*5), Math.round(0.83*5), Math.round(0.45*5)),
-      "Mage": colors.fg.getRgb(Math.round(0.25*5), Math.round(0.78*5), Math.round(0.92*5)),
-      "Paladin": colors.fg.getRgb(Math.round(0.96*5), Math.round(0.55*5), Math.round(0.73*5)),
+      "Druid": colors.fg.getRgb(Math.round(5), Math.round(0.49 * 5), Math.round(0.04 * 5)),
+      "Hunter": colors.fg.getRgb(Math.round(0.67 * 5), Math.round(0.83 * 5), Math.round(0.45 * 5)),
+      "Mage": colors.fg.getRgb(Math.round(0.25 * 5), Math.round(0.78 * 5), Math.round(0.92 * 5)),
+      "Paladin": colors.fg.getRgb(Math.round(0.96 * 5), Math.round(0.55 * 5), Math.round(0.73 * 5)),
       "Priest": colors.fg.getRgb(5, 5, 5),
-      "Rogue": colors.fg.getRgb(5, Math.round(0.96*5), Math.round(0.41*5)),
-      "Shaman": colors.fg.getRgb(0, Math.round(0.44*5), Math.round(0.87*5)),
-      "Warlock": colors.fg.getRgb(Math.round(0.53*5), Math.round(0.53*5), Math.round(0.93*5)),
-      "Warrior": colors.fg.getRgb(Math.round(0.78*5), Math.round(0.61*5), Math.round(0.43*5)),
+      "Rogue": colors.fg.getRgb(5, Math.round(0.96 * 5), Math.round(0.41 * 5)),
+      "Shaman": colors.fg.getRgb(0, Math.round(0.44 * 5), Math.round(0.87 * 5)),
+      "Warlock": colors.fg.getRgb(Math.round(0.53 * 5), Math.round(0.53 * 5), Math.round(0.93 * 5)),
+      "Warrior": colors.fg.getRgb(Math.round(0.78 * 5), Math.round(0.61 * 5), Math.round(0.43 * 5)),
    },
    inquirer = require("inquirer-async"),
    fs = require("fs"),
@@ -45,178 +45,313 @@ const
       "Consumable": colorPurple,
       "Flask": colorBrightPurple,
       "World": colorBrown,
+      "Food": colorPurple,
+      "Alcohol": colorPurple,
    };
 
 const BUFFS = {
-   "22888" : {
-       "name": "Rallying Cry of the Dragonslayer",
-       "desc": "Dragonslayer",
-       "type": "World",
-       "score": 5,
+   "22888": {
+      "name": "Rallying Cry of the Dragonslayer",
+      "desc": "Dragonslayer",
+      "type": "World",
+      "score": 200,
+      "onetime": true,
    },
-   "15366" : {
-       "name": "Songflower Serenade",
-       "desc": "Songflower",
-       "type": "World",
-       "score": 5,
+   "15366": {
+      "name": "Songflower Serenade",
+      "desc": "Songflower",
+      "type": "World",
+      "score": 600,
+      "onetime": true,
    },
-   "22817" : {
-       "name": "Fengus' Ferocity",
-       "desc": "DMT AP",
-       "type": "World",
-       "score": 5,
-       "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
+   "22817": {
+      "name": "Fengus' Ferocity",
+      "desc": "DMT AP",
+      "type": "World",
+      "score": 200,
+      "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
+      "onetime": true,
    },
-   "22820" : {
-       "name": "Slip'kik's Savvy",
-       "desc": "DMT Crit",
-       "type": "World",
-       "score": 3,
+   "22820": {
+      "name": "Slip'kik's Savvy",
+      "desc": "DMT Spell Crit",
+      "type": "World",
+      "score": 200,
+      "onetime": true,
+      "ignore": ["Warrior", "Rogue", "Hunter"],
    },
-   "22818" : {
-       "name": "Mol'dar's Moxie",
-       "desc": "DMT Stamina",
-       "type": "World",
-       "score": 5,
+   "22818": {
+      "name": "Mol'dar's Moxie",
+      "desc": "DMT Stamina",
+      "type": "World",
+      "score": 200,
+      "onetime": true,
    },
-   "17549" : {
+   "3593": {
+      "name": "Health II (120 HP)",
+      "desc": "Elixir of Fortitude",
+      "type": "Consumable",
+      "score": 2,
+   },
+   "3222": {
+      "name": "Regeneration (6 hp5)",
+      "desc": "Strong Troll's Blood Potion",
+      "type": "Consumable",
+      "score": 1,
+   },
+   "3223": {
+      "name": "Regeneration (12 hp5)",
+      "desc": "Mighty Troll's Blood Potion",
+      "type": "Consumable",
+      "score": 2,
+   },
+   "24361": {
+      "name": "Regeneration (20 hp5)",
+      "desc": "Major Troll's Blood Potion",
+      "type": "Consumable",
+      "score": 3,
+   },
+   "24363": {
+      "name": "Mana Regeneration (12 mp5)",
+      "desc": "Mageblood Potion",
+      "type": "Consumable",
+      "score": 5,
+   },
+   "17543": {
+      "name": "Greater Fire Protection",
+      "desc": "Greater Fire Protection Potion",
+      "type": "Consumable",
+      "score": 600,
+      "onetime": true,
+   },
+   "17549": {
       "name": "Greater Arcane Protection",
       "desc": "Greater Arcane Protection Potion",
       "type": "Consumable",
-      "score": 50,
+      "score": 600,
       "onetime": true,
-  },
-   "17543" : {
-       "name": "Greater Fire Protection",
-       "desc": "Greater Fire Protection Potion",
-       "type": "Consumable",
-       "score": 100,
-       "onetime": true,
    },
-   "7233" : {
-       "name": "Fire Protection",
-       "type": "Consumable",
-       "score": 50,
-       "onetime": true,
+   "7233": {
+      "name": "Fire Protection",
+      "type": "Consumable",
+      "score": 200,
+      "onetime": true,
    },
-   "17548" : {
-       "name": "Greater Shadow Protection",
-       "desc": "Greater Shadow Protection Potion",
-       "type": "Consumable",
-       "score": 100,
-       "onetime": true,
+   "17548": {
+      "name": "Greater Shadow Protection",
+      "desc": "Greater Shadow Protection Potion",
+      "type": "Consumable",
+      "score": 600,
+      "onetime": true,
    },
-   "7242" : {
-       "name": "Shadow Protection",
-       "desc": "Shadow Protection Potion",
-       "type": "Consumable",
-       "score": 50,
-       "onetime": true,
+   "7242": {
+      "name": "Shadow Protection",
+      "desc": "Shadow Protection Potion",
+      "type": "Consumable",
+      "score": 200,
+      "onetime": true,
    },
-   "17546" : {
-       "name": "Greater Nature Protection",
-       "desc": "Greater Nature Protection Potion",
-       "type": "Consumable",
-       "score": 100,
-       "onetime": true,
+   "17546": {
+      "name": "Greater Nature Protection",
+      "desc": "Greater Nature Protection Potion",
+      "type": "Consumable",
+      "score": 600,
+      "onetime": true,
    },
-   "7254" : {
-       "name": "Nature Protection",
-       "desc": "Nature Protection Potion",
-       "type": "Consumable",
-       "score": 50,
-       "onetime": true,
+   "7254": {
+      "name": "Nature Protection",
+      "desc": "Nature Protection Potion",
+      "type": "Consumable",
+      "score": 200,
+      "onetime": true,
    },
-   "17544" : {
-       "name": "Greater Frost Protection",
-       "desc": "Greater Frost Protection Potion",
-       "type": "Consumable",
-       "score": 100,
-       "onetime": true,
+   "17544": {
+      "name": "Greater Frost Protection",
+      "desc": "Greater Frost Protection Potion",
+      "type": "Consumable",
+      "score": 200,
+      "onetime": true,
    },
-   "7239" : {
-       "name": "Frost Protection",
-       "desc": "Frost Protection Potion",
-       "type": "Consumable",
-       "score": 50,
-       "onetime": true,
+   "7239": {
+      "name": "Frost Protection",
+      "desc": "Frost Protection Potion",
+      "type": "Consumable",
+      "score": 100,
+      "onetime": true,
    },
-   "17539" : {
-       "name": "Greater Arcane Elixir",
-       "type": "Consumable",
-       "score": 5,
-       "ignore": ["Warrior", "Rogue", "Hunter"],
+   "17539": {
+      "name": "Greater Arcane Elixir",
+      "type": "Consumable",
+      "score": 5,
+      "ignore": ["Warrior", "Rogue", "Hunter"],
    },
-   "11474" : {
-       "name": "Elixir of Shadow Power",
-       "type": "Consumable",
-       "score": 5,
-       "ignore": ["Mage", "Shaman"],
+   "11474": {
+      "name": "Elixir of Shadow Power",
+      "type": "Consumable",
+      "score": 5,
+      "ignore": ["Mage", "Shaman"],
    },
-   "17538" : {
-       "name": "Elixir of the Mongoose",
-       "type": "Consumable",
-       "score": 5,
-       "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
+   "17538": {
+      "name": "Elixir of the Mongoose",
+      "type": "Consumable",
+      "score": 5,
+      "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
    },
-   "16326" : {
-       "name": "Juju Ember",
-       "desc": "Fire Res Juju",
-       "type": "Consumable",
-       "score": 20,
+   "11405": {
+      "name": "Elixir of the Giants",
+      "type": "Consumable",
+      "score": 5,
+      "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
    },
-   "16329" : {
-       "name": "Juju Might",
-       "desc": "Attack Power Juju",
-       "type": "Consumable",
-       "score": 20,
-       "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
+   "16326": {
+      "name": "Juju Ember",
+      "desc": "Fire Res Juju",
+      "type": "Consumable",
+      "score": 5,
    },
-   "16323" : {
-       "name": "Juju Power",
-       "desc": "Strength Juju",
-       "type": "Consumable",
-       "score": 20,
-       "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
+   "16329": {
+      "name": "Juju Might",
+      "desc": "Attack Power Juju",
+      "type": "Consumable",
+      "score": 5,
+      "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
    },
-   "16322" : {
-       "name": "Juju Flurry",
-       "desc": "Attack Speed Juju",
-       "type": "Consumable",
-       "score": 20,
-       "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
+   "16323": {
+      "name": "Juju Power",
+      "desc": "Strength Juju",
+      "type": "Consumable",
+      "score": 5,
+      "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
    },
-   "16325" : {
-       "name": "Juju Chill",
-       "desc": "Frost Res Juju",
-       "type": "Consumable",
-       "score": 20,
+   "16322": {
+      "name": "Juju Flurry",
+      "desc": "Attack Speed Juju",
+      "type": "Consumable",
+      "score": 5,
+      "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
    },
-   "16321" : {
-       "name": "Juju Escape",
-       "desc": "Dodge Juju",
-       "type": "Consumable",
-       "score": 20,
-       "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
+   "16325": {
+      "name": "Juju Chill",
+      "desc": "Frost Res Juju",
+      "type": "Consumable",
+      "score": 1,
    },
-   "17628" : {
-       "name": "Supreme Power",
-       "type": "Flask",
-       "score": 20,
+   "16321": {
+      "name": "Juju Escape",
+      "desc": "Dodge Juju",
+      "type": "Consumable",
+      "score": 5,
+      "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
    },
-   "17626" : {
-       "name": "Flask of the Titans",
-       "type": "Flask",
-       "score": 20,
+   "17628": {
+      "name": "Supreme Power",
+      "type": "Flask",
+      "score": 2000,
+      "onetime": true,
    },
-   "17627" : {
-       "name": "Distilled Wisdom",
-       "type": "Flask",
-       "score": 20,
+   "17626": {
+      "name": "Flask of the Titans",
+      "type": "Flask",
+      "score": 2000,
+      "onetime": true,
+   },
+   "17627": {
+      "name": "Distilled Wisdom",
+      "type": "Flask",
+      "score": 2000,
+      "onetime": true,
+   },
+   "24870": {
+      "name": "Well Fed (?? sta, ?? spi)",
+      "type": "Food",
+      "score": 5,
+   },
+   "19705": {
+      "name": "Well Fed (1 sta, 1 spi)",
+      "type": "Food",
+      "score": 5,
+   },
+   "19706": {
+      "name": "Well Fed (3 sta, 3 spi)",
+      "type": "Food",
+      "score": 5,
+   },
+   "19709": {
+      "name": "Well Fed (7 sta, 7 spi)",
+      "type": "Food",
+      "score": 5,
+   },
+   "19710": {
+      "name": "Well Fed (11 sta, 11 spi)",
+      "type": "Food",
+      "score": 5,
+   },
+   "19711": {
+      "name": "Well Fed (13 sta, 13 spi)",
+      "type": "Food",
+      "score": 5,
+   },
+   "25694": {
+      "name": "Well Fed (2 mp5)",
+      "type": "Food",
+      "score": 5,
+      "ignore": ["Warrior", "Rogue"]
+   },
+   "25941": {
+      "name": "Well Fed (5 mp5)",
+      "type": "Food",
+      "score": 5,
+      "ignore": ["Warrior", "Rogue"]
+   },
+   "18194": {
+      "name": "Mana Regeneration (7 mp5)",
+      "desc": "Nightfin Soup",
+      "type": "Food",
+      "score": 5,
+      "ignore": ["Warrior", "Rogue"]
+   },
+   "22730": {
+      "name": "Increased Intellect (9 int)",
+      "desc": "Runn Tum Tuber Surprise",
+      "type": "Food",
+      "score": 5,
+      "ignore": ["Warrior", "Rogue"]
+   },
+   "18192": {
+      "name": "Increased Agility (9 agi)",
+      "desc": "Grilled Squid",
+      "type": "Food",
+      "score": 5,
+      "ignore": ["Mage", "Warlock", "Priest"],
+   },
+   "24799": {
+      "name": "Well Fed (19 str)",
+      "desc": "Smoked Desert Dumpling",
+      "type": "Food",
+      "score": 5,
+      "ignore": ["Mage", "Warlock", "Priest", "Shaman", "Hunter"],
+   },
+   "18284": {
+      "name": "Gordok Green Grog (9 sta)",
+      "desc": "DMT beer",
+      "type": "Alcohol",
+      "score": 5,
+   },
+   "22790": {
+      "name": "Kreeg's Stout Beatdown (25 spi, -5 int)",
+      "desc": "DMT beer",
+      "type": "Alcohol",
+      "score": 5,
+   },
+   "25804": {
+      "name": "Rumsey Rum Black Label (15 sta)",
+      "desc": "Fishing",
+      "type": "Alcohol",
+      "score": 5,
    },
 }
 
-String.prototype.replaceAll = function(search, replacement) {
+String.prototype.replaceAll = function (search, replacement) {
    let target = this;
    return target.split(search).join(replacement);
 };
@@ -297,7 +432,7 @@ function parseLua(lua) {
    let arrayIndex = 0;
    let pos = json.indexOf(', -- [')
    while (pos !== -1) {
-      if (json[pos-1] === '}') {
+      if (json[pos - 1] === '}') {
          let j = pos - 2, count = 1;
          while (count) {
             if (json[j] == '}')
@@ -355,24 +490,28 @@ function readRaids(lua) {
       console.log(`No raids found.`);
       process.exit(1);
    }
-   return {raids, classes};
+   return { raids, classes };
 }
 
 function getBuffString(playerClass, buffs) {
-   let strings = [];
-   let asArr = [];
-   let score = 0;
+   let strings = []
+   let asArr = []
+   let score = 0
    Object.keys(buffs).forEach(spellId => {
-      let minutes = buffs[spellId];
-      if (!BUFFS[spellId].ignore || BUFFS[spellId].ignore.indexOf(playerClass) == -1)
-         score += (BUFFS[spellId].onetime ? BUFFS[spellId].score : BUFFS[spellId].score * minutes);
-      asArr.push({spellId, minutes});
+      let minutes = buffs[spellId]
+      if (!BUFFS[spellId]) {
+         console.error(`Missing buff info for spell ID ${spellId}`);
+      } else {
+         if (!BUFFS[spellId].ignore || BUFFS[spellId].ignore.indexOf(playerClass) == -1)
+            score += (BUFFS[spellId].onetime ? BUFFS[spellId].score : BUFFS[spellId].score * minutes);
+         asArr.push({ spellId, minutes });
+      }
    });
-   let text = ` ${colorWhite}${(''+score).padStart(6, ' ')}  ` + asArr
+   let text = ` ${colorWhite}${('' + score).padStart(6, ' ')}  ` + asArr
       .sort((a, b) => b.minutes - a.minutes)
       .map(buff => `${buffColor[BUFFS[buff.spellId].type]}${BUFFS[buff.spellId].name} ${colorGray}${buff.minutes}m`)
       .join(`${colorDarkGray}, `);
-   return {score, text};
+   return { score, text };
 }
 
 async function main() {
@@ -396,7 +535,7 @@ async function main() {
       const backupFilename = `backup-${moment().format('YYYYMMDDHHmmss')}.lua`;
       fs.copyFileSync(luaFile, path.join(exportPath, backupFilename))
 
-      const {raids, classes} = readRaids(luaFile);
+      const { raids, classes } = readRaids(luaFile);
       let answerIndex = 0
 
       if (!USE_LAST_RAID) {
@@ -420,11 +559,11 @@ async function main() {
 
       let attendedPlayers = raid['attended']
          .sort(sortPlayerByClass(classes))
-         .map(p => ({p, buffs: getBuffString(classes[p], raid.buffs[p])}))
+         .map(p => ({ p, buffs: getBuffString(classes[p], raid.buffs[p]) }))
          .sort((a, b) => b.buffs.score - a.buffs.score)
          .map(o => `  ${playerColor(classes[o.p])}${o.p.padEnd(12, ' ')}${nocolor} ${o.buffs.text}`)
          .join('\n  ');
-         // .forEach(p => playerByClass[classes[p]] = (playerByClass[classes[p]] || []).concat(`${playerColor(classes[p])}${p}`));
+      // .forEach(p => playerByClass[classes[p]] = (playerByClass[classes[p]] || []).concat(`${playerColor(classes[p])}${p}`));
       // const playersGroupedByClass =
       //    Object.values(playerByClass)
       //       .map(players => players.join(", "))
@@ -436,8 +575,8 @@ async function main() {
       console.log(`Loot:\n  ${Object.values(raid['loot'] || {}).map(o => {
          if (o['de'])
             return `${colorGreen}Disenchanted ${qualityColor[o['quality']]}[${o['item']}]${nocolor}`;
-         else 
-            return `${playerColor(classes[o['player']])}${o['player']} ${colorGreen}received ${qualityColor[o['quality']]}[${o['item']}]${nocolor}`; 
+         else
+            return `${playerColor(classes[o['player']])}${o['player']} ${colorGreen}received ${qualityColor[o['quality']]}[${o['item']}]${nocolor}`;
       }).join('\n  ')}${nocolor}\n`);
 
       const raidDateParts = raid['date'].split(' ')[0].split('-');
