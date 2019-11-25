@@ -341,6 +341,7 @@ function RaidLogger_StartRaid()
 
     RaidLoggerStore.activeRaid = {
         date = date("%y-%m-%d %H:%M"),
+        startTime = time(),
         attended = {},
         attendedCount = 0,
         benched = {},
@@ -359,6 +360,7 @@ end
 
 function RaidLogger_EndRaid()
     if RaidLoggerStore.activeRaid then
+        RaidLoggerStore.activeRaid.endTime = time()
         if not RaidLoggerStore.activeRaid.zone then
             RaidLoggerStore.activeRaid.zone = "Unknown"
         end

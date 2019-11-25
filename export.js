@@ -8,6 +8,8 @@ const
    USE_LAST_RAID = false,
    moment = require('moment'),
    colors = require('ansi-256-colors'),
+   program = require('commander'),
+   request = require('async-request'),
    colorInfo = colors.fg.getRgb(0, 1, 4),
    colorWarning = colors.fg.getRgb(5, 5, 0),
    colorBrown = colors.fg.getRgb(4, 2, 1),
@@ -47,309 +49,8 @@ const
       "World": colorBrown,
       "Food": colorPurple,
       "Alcohol": colorPurple,
-   };
-
-const BUFFS = {
-   "22888": {
-      "name": "Rallying Cry of the Dragonslayer",
-      "desc": "Dragonslayer",
-      "type": "World",
-      "score": 200,
-      "onetime": true,
    },
-   "15366": {
-      "name": "Songflower Serenade",
-      "desc": "Songflower",
-      "type": "World",
-      "score": 600,
-      "onetime": true,
-   },
-   "22817": {
-      "name": "Fengus' Ferocity",
-      "desc": "DMT AP",
-      "type": "World",
-      "score": 200,
-      "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
-      "onetime": true,
-   },
-   "22820": {
-      "name": "Slip'kik's Savvy",
-      "desc": "DMT Spell Crit",
-      "type": "World",
-      "score": 200,
-      "onetime": true,
-      "ignore": ["Warrior", "Rogue", "Hunter"],
-   },
-   "22818": {
-      "name": "Mol'dar's Moxie",
-      "desc": "DMT Stamina",
-      "type": "World",
-      "score": 200,
-      "onetime": true,
-   },
-   "3593": {
-      "name": "Health II (120 HP)",
-      "desc": "Elixir of Fortitude",
-      "type": "Consumable",
-      "score": 2,
-   },
-   "3222": {
-      "name": "Regeneration (6 hp5)",
-      "desc": "Strong Troll's Blood Potion",
-      "type": "Consumable",
-      "score": 1,
-   },
-   "3223": {
-      "name": "Regeneration (12 hp5)",
-      "desc": "Mighty Troll's Blood Potion",
-      "type": "Consumable",
-      "score": 2,
-   },
-   "24361": {
-      "name": "Regeneration (20 hp5)",
-      "desc": "Major Troll's Blood Potion",
-      "type": "Consumable",
-      "score": 3,
-   },
-   "24363": {
-      "name": "Mana Regeneration (12 mp5)",
-      "desc": "Mageblood Potion",
-      "type": "Consumable",
-      "score": 5,
-   },
-   "17543": {
-      "name": "Greater Fire Protection",
-      "desc": "Greater Fire Protection Potion",
-      "type": "Consumable",
-      "score": 600,
-      "onetime": true,
-   },
-   "17549": {
-      "name": "Greater Arcane Protection",
-      "desc": "Greater Arcane Protection Potion",
-      "type": "Consumable",
-      "score": 600,
-      "onetime": true,
-   },
-   "7233": {
-      "name": "Fire Protection",
-      "type": "Consumable",
-      "score": 200,
-      "onetime": true,
-   },
-   "17548": {
-      "name": "Greater Shadow Protection",
-      "desc": "Greater Shadow Protection Potion",
-      "type": "Consumable",
-      "score": 600,
-      "onetime": true,
-   },
-   "7242": {
-      "name": "Shadow Protection",
-      "desc": "Shadow Protection Potion",
-      "type": "Consumable",
-      "score": 200,
-      "onetime": true,
-   },
-   "17546": {
-      "name": "Greater Nature Protection",
-      "desc": "Greater Nature Protection Potion",
-      "type": "Consumable",
-      "score": 600,
-      "onetime": true,
-   },
-   "7254": {
-      "name": "Nature Protection",
-      "desc": "Nature Protection Potion",
-      "type": "Consumable",
-      "score": 200,
-      "onetime": true,
-   },
-   "17544": {
-      "name": "Greater Frost Protection",
-      "desc": "Greater Frost Protection Potion",
-      "type": "Consumable",
-      "score": 200,
-      "onetime": true,
-   },
-   "7239": {
-      "name": "Frost Protection",
-      "desc": "Frost Protection Potion",
-      "type": "Consumable",
-      "score": 100,
-      "onetime": true,
-   },
-   "17539": {
-      "name": "Greater Arcane Elixir",
-      "type": "Consumable",
-      "score": 5,
-      "ignore": ["Warrior", "Rogue", "Hunter"],
-   },
-   "11474": {
-      "name": "Elixir of Shadow Power",
-      "type": "Consumable",
-      "score": 5,
-      "ignore": ["Mage", "Shaman"],
-   },
-   "17538": {
-      "name": "Elixir of the Mongoose",
-      "type": "Consumable",
-      "score": 5,
-      "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
-   },
-   "11405": {
-      "name": "Elixir of the Giants",
-      "type": "Consumable",
-      "score": 5,
-      "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
-   },
-   "16326": {
-      "name": "Juju Ember",
-      "desc": "Fire Res Juju",
-      "type": "Consumable",
-      "score": 5,
-   },
-   "16329": {
-      "name": "Juju Might",
-      "desc": "Attack Power Juju",
-      "type": "Consumable",
-      "score": 5,
-      "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
-   },
-   "16323": {
-      "name": "Juju Power",
-      "desc": "Strength Juju",
-      "type": "Consumable",
-      "score": 5,
-      "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
-   },
-   "16322": {
-      "name": "Juju Flurry",
-      "desc": "Attack Speed Juju",
-      "type": "Consumable",
-      "score": 5,
-      "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
-   },
-   "16325": {
-      "name": "Juju Chill",
-      "desc": "Frost Res Juju",
-      "type": "Consumable",
-      "score": 1,
-   },
-   "16321": {
-      "name": "Juju Escape",
-      "desc": "Dodge Juju",
-      "type": "Consumable",
-      "score": 5,
-      "ignore": ["Mage", "Warlock", "Shaman", "Priest"],
-   },
-   "17628": {
-      "name": "Supreme Power",
-      "type": "Flask",
-      "score": 2000,
-      "onetime": true,
-   },
-   "17626": {
-      "name": "Flask of the Titans",
-      "type": "Flask",
-      "score": 2000,
-      "onetime": true,
-   },
-   "17627": {
-      "name": "Distilled Wisdom",
-      "type": "Flask",
-      "score": 2000,
-      "onetime": true,
-   },
-   "24870": {
-      "name": "Well Fed (?? sta, ?? spi)",
-      "type": "Food",
-      "score": 5,
-   },
-   "19705": {
-      "name": "Well Fed (1 sta, 1 spi)",
-      "type": "Food",
-      "score": 5,
-   },
-   "19706": {
-      "name": "Well Fed (3 sta, 3 spi)",
-      "type": "Food",
-      "score": 5,
-   },
-   "19709": {
-      "name": "Well Fed (7 sta, 7 spi)",
-      "type": "Food",
-      "score": 5,
-   },
-   "19710": {
-      "name": "Well Fed (11 sta, 11 spi)",
-      "type": "Food",
-      "score": 5,
-   },
-   "19711": {
-      "name": "Well Fed (13 sta, 13 spi)",
-      "type": "Food",
-      "score": 5,
-   },
-   "25694": {
-      "name": "Well Fed (2 mp5)",
-      "type": "Food",
-      "score": 5,
-      "ignore": ["Warrior", "Rogue"]
-   },
-   "25941": {
-      "name": "Well Fed (5 mp5)",
-      "type": "Food",
-      "score": 5,
-      "ignore": ["Warrior", "Rogue"]
-   },
-   "18194": {
-      "name": "Mana Regeneration (7 mp5)",
-      "desc": "Nightfin Soup",
-      "type": "Food",
-      "score": 5,
-      "ignore": ["Warrior", "Rogue"]
-   },
-   "22730": {
-      "name": "Increased Intellect (9 int)",
-      "desc": "Runn Tum Tuber Surprise",
-      "type": "Food",
-      "score": 5,
-      "ignore": ["Warrior", "Rogue"]
-   },
-   "18192": {
-      "name": "Increased Agility (9 agi)",
-      "desc": "Grilled Squid",
-      "type": "Food",
-      "score": 5,
-      "ignore": ["Mage", "Warlock", "Priest"],
-   },
-   "24799": {
-      "name": "Well Fed (19 str)",
-      "desc": "Smoked Desert Dumpling",
-      "type": "Food",
-      "score": 5,
-      "ignore": ["Mage", "Warlock", "Priest", "Shaman", "Hunter"],
-   },
-   "18284": {
-      "name": "Gordok Green Grog (9 sta)",
-      "desc": "DMT beer",
-      "type": "Alcohol",
-      "score": 5,
-   },
-   "22790": {
-      "name": "Kreeg's Stout Beatdown (25 spi, -5 int)",
-      "desc": "DMT beer",
-      "type": "Alcohol",
-      "score": 5,
-   },
-   "25804": {
-      "name": "Rumsey Rum Black Label (15 sta)",
-      "desc": "Fishing",
-      "type": "Alcohol",
-      "score": 5,
-   },
-}
+   BUFFS = require('./buffs');
 
 String.prototype.replaceAll = function (search, replacement) {
    let target = this;
@@ -479,6 +180,7 @@ function readRaids(lua) {
       raids.forEach(raid => {
          raid['attended'] = Object.values(raid['attended']);
          raid['benched'] = Object.values(raid['benched']);
+         raid['loot'] = Object.values(raid['loot']);
       });
    } catch (e) {
       console.error(`Failed parsing LUA file: ${e.message}`);
@@ -514,32 +216,42 @@ function getBuffString(playerClass, buffs) {
    return { score, text };
 }
 
-async function main() {
-   // console.log(process.argv.length);
+function findLuaFile() {
+   let wtfFile = searchRecursive(__dirname, 'WTF', 1);
+   if (!wtfFile) {
+      console.error(`Couldn't find WoW root folder! Make sure to run this file somewhere within your WoW folder, or one of its sub-folders`);
+      process.exit(1);
+   }
+
+   let luaFile = searchRecursive(wtfFile, 'RaidLogger.lua', 0);
+   if (!luaFile) {
+      console.error(`Couldn't find RaidLogger.lua output file! It should be under SavedVariables after finishing a raid with /rl end`);
+      process.exit(1);
+   }
+   console.log(`\nUsing ${colorWarning}${luaFile}${nocolor}`);
+
+   return luaFile;
+}
+
+function backup(exportPath) {
+   const backupFilename = `backup-${moment().format('YYYYMMDDHHmmss')}.lua`;
+   fs.copyFileSync(luaFile, path.join(exportPath, backupFilename))
+}
+
+function raidName(o) {
+   return `${o['date']} / ${o['zone']} / ${o['attendedCount']} participants, ${o['benchedCount']} benched`;
+}
+
+async function browseLua(exportPath) {
    try {
-      const exportPath = process.argv.length < 3 ? '.' : process.argv[2];
-
-      let wtfFile = searchRecursive(__dirname, 'WTF', 1);
-      if (!wtfFile) {
-         console.error(`Couldn't find WoW root folder! Make sure to run this file somewhere within your WoW folder, or one of its sub-folders`);
-         process.exit(1);
-      }
-
-      let luaFile = searchRecursive(wtfFile, 'RaidLogger.lua', 0);
-      if (!luaFile) {
-         console.error(`Couldn't find RaidLogger.lua output file! It should be under SavedVariables after finishing a raid with /rl end`);
-         process.exit(1);
-      }
-      console.log(`\nUsing ${colorWarning}${luaFile}${nocolor}`);
-
-      const backupFilename = `backup-${moment().format('YYYYMMDDHHmmss')}.lua`;
-      fs.copyFileSync(luaFile, path.join(exportPath, backupFilename))
+      let luaFile = findLuaFile()
+      // backup()
 
       const { raids, classes } = readRaids(luaFile);
       let answerIndex = 0
 
       if (!USE_LAST_RAID) {
-         let raidOptions = raids.map(o => `${o['date']} / ${o['zone']} / ${o['attendedCount']} participants, ${o['benchedCount']} benched`);
+         let raidOptions = raids.map(o => raidName(o));
          raidOptions.push('Cancel');
 
          console.log('');
@@ -601,6 +313,63 @@ async function main() {
    } catch (e) {
       console.error(`Exception: ${e.stack}`);
    }
+}
+
+
+async function uploadAllRaids(apiEndpoint) {
+   try {
+      let luaFile = findLuaFile()
+      const payload = readRaids(luaFile);
+      let raids = payload.raids.sort((a, b) => a['date'].localeCompare(b['date']));
+      let first = true;
+
+      for (let raid of raids) {
+         console.log(`Uploading raid ${raidName(raid)}`)
+         const response = await request(apiEndpoint + "/raid", {
+            method: 'POST',
+            data: {raid, classes: first ? payload.classes : null},
+         });   
+         first = false;
+         if (response.statusCode === 200) {
+            const responseContent = JSON.parse(response.body);
+            if (responseContent.error) {
+               if (responseContent.errorCode === 1) {
+                  console.warn(responseContent.error);
+               } else {
+                  console.error(responseContent.error);
+                  console.debug(JSON.stringify(raid));
+               }
+            }
+         } else {
+            console.error("Unexpected HTTP status: " + response.statusCode);
+            console.debug(JSON.stringify(raid));
+         }
+      }
+   } catch (e) {
+      console.error(`Exception: ${e.stack}`);
+   }
+}
+
+async function main() {
+   program
+      .command('browse')
+      .description('Browse raids in LUA')
+      .option("-e, --export <exportPath>", "Path to export data", ".")
+      .action(function (options) {
+         browseLua(options['exportPath']);
+      });
+
+   program
+      .command('uploadall <url')
+      .description('Uploads all raids to guild\'s website')
+      .action(function (apiurl, options) {
+         uploadAllRaids(apiurl);
+      });
+
+   program.parse(process.argv);
+
+   if (program.args.length === 0)
+      program.help();
 }
 
 main();

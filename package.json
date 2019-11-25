@@ -5,6 +5,8 @@
   "main": "upload.js",
   "dependencies": {
     "ansi-256-colors": "^1.1.0",
+    "async-request": "^1.2.0",
+    "commander": "^4.0.1",
     "inquirer": "^6.2.2",
     "inquirer-async": "^1.1.0",
     "moment": "^2.24.0"
