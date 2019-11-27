@@ -38,6 +38,11 @@ local IGNORED_ITEMS = {
 
 local COLOR_INSTANCE = "|cffff33ff"
 
+local STATE_ATTENDED = "a"
+local STATE_BENCHED = "b"
+local STATE_NOSHOW = "n"
+local STATE_LATE = "l"
+
 local QUALITY_POOR = 0 -- gray
 local QUALITY_COMMON = 1 -- white
 local QUALITY_UNCOMMON = 2 -- green
@@ -100,10 +105,12 @@ local function RemoveValue(tab, val)
     return false
 end
 
-local function ConcatPlayers(tab) 
+local function ConcatPlayers(tab, filter) 
     local st = ""
-    for _, name in ipairs(tab) do
-        st = st .. CLASS_COLOR[RaidLoggerStore.players[name] or "Unknown"] .. name .. "|r "
+    for name, state in pairs(tab) do
+        if state == filter then 
+            st = st .. CLASS_COLOR[RaidLoggerStore.players[name] or "Unknown"] .. name .. "|r "
+        end 
     end 
     return st
 end 
@@ -264,13 +271,31 @@ function RaidLogger_Main(msg)
         out("  |cFF00FF00/rl p|r - print active raid, if any.")
     elseif  "BENCH" == cmd or "B" == cmd then
         if arg1 and string.len(arg1) > 0 then
-            RaidLogger_Bench(FixPlayerName(arg1))
+            RaidLogger_LogBenched(FixPlayerName(arg1))
+        else
+            err("Missing player name!")
+        end
+    elseif  "NOSHOW" == cmd or "NS" == cmd then
+        if arg1 and string.len(arg1) > 0 then
+            RaidLogger_LogNoShow(FixPlayerName(arg1))
+        else
+            err("Missing player name!")
+        end
+    elseif  "LATE" == cmd or "L" == cmd then
+        if arg1 and string.len(arg1) > 0 then
+            RaidLogger_LogLateShow(FixPlayerName(arg1))
+        else
+            err("Missing player name!")
+        end
+    elseif  "REMOVE" == cmd or "R" == cmd then
+        if arg1 and string.len(arg1) > 0 then
+            RaidLogger_RemoveFromLog(FixPlayerName(arg1))
         else
             err("Missing player name!")
         end
     elseif  "ADD" == cmd or "A" == cmd then
         if arg1 and string.len(arg1) > 0 then
-            RaidLogger_Attend(FixPlayerName(arg1), true)
+            RaidLogger_LogAttend(FixPlayerName(arg1))
         else
             err("Missing player name!")
         end
@@ -308,14 +333,10 @@ function RaidLogger_Main(msg)
             if RaidLoggerStore.activeRaid.zone then
                 out("Zone " .. COLOR_INSTANCE .. RaidLoggerStore.activeRaid.zone)
             end
-            if RaidLoggerStore.activeRaid.attendedCount > 0 then
-                out("Attended " .. ConcatPlayers(RaidLoggerStore.activeRaid.attended))
-            else
-                out("No players attended.")
-            end
-            if RaidLoggerStore.activeRaid.benchedCount > 0 then
-                out("Benched " .. ConcatPlayers(RaidLoggerStore.activeRaid.benched))
-            end
+            out("Attended " .. ConcatPlayers(RaidLoggerStore.activeRaid.players, STATE_ATTENDED))
+            out("Benched " .. ConcatPlayers(RaidLoggerStore.activeRaid.players, STATE_BENCHED))
+            out("No-show " .. ConcatPlayers(RaidLoggerStore.activeRaid.players, STATE_NOSHOW))
+            out("Late " .. ConcatPlayers(RaidLoggerStore.activeRaid.players, STATE_LATE))
         else
             out("No active raid.")
         end
@@ -341,10 +362,7 @@ function RaidLogger_StartRaid()
     RaidLoggerStore.activeRaid = {
         date = date("%y-%m-%d %H:%M"),
         startTime = time(),
-        attended = {},
-        attendedCount = 0,
-        benched = {},
-        benchedCount = 0,
+        players = {},
         zone = nil,
         loot = {},
         lootCount = 0,
@@ -373,38 +391,35 @@ function RaidLogger_EndRaid()
             RaidLoggerStore.activeRaid.zone = "Unknown"
         end
         table.insert(RaidLoggerStore.raids, RaidLoggerStore.activeRaid)
-        out("Ended raid to " .. COLOR_INSTANCE .. RaidLoggerStore.activeRaid.zone .. "|r with " .. COLOR_INSTANCE .. RaidLoggerStore.activeRaid.attendedCount .. "|r participants.")
+        out("Ended raid to " .. COLOR_INSTANCE .. RaidLoggerStore.activeRaid.zone)
     end
     RaidLoggerStore.activeRaid = nil
     LoggingCombat(false) -- stop combat logging
 end
 
-function RaidLogger_Bench(player)
-    if not HasValue(RaidLoggerStore.activeRaid.benched, player) then
-        out("Benching " .. ColorName(player))
-        table.insert(RaidLoggerStore.activeRaid.benched, player)
-        RaidLoggerStore.activeRaid.benchedCount = RaidLoggerStore.activeRaid.benchedCount + 1;
-    end
-    -- remove attended player from benched
-    if RemoveValue(RaidLoggerStore.activeRaid.attended, player) then
-        out("Unattending " .. ColorName(player))
-        RaidLoggerStore.activeRaid.attendedCount = RaidLoggerStore.activeRaid.attendedCount - 1;
-    end
+function RaidLogger_LogBenched(player)
+    out("Logging bench for " .. ColorName(player))
+    RaidLoggerStore.activeRaid.players[player] = STATE_BENCHED
 end
 
-function RaidLogger_Attend(player, warnExists)
-    if not HasValue(RaidLoggerStore.activeRaid.attended, player) then
-        out("Adding " .. ColorName(player))
-        table.insert(RaidLoggerStore.activeRaid.attended, player)
-        RaidLoggerStore.activeRaid.attendedCount = RaidLoggerStore.activeRaid.attendedCount + 1;
-    elseif warnExists then
-        out("Ignoring " .. ColorName(player) .. ", already logged")
-    end
-    -- remove attended player from benched
-    if RemoveValue(RaidLoggerStore.activeRaid.benched, player) then
-        out("Unbenching " .. ColorName(player))
-        RaidLoggerStore.activeRaid.benchedCount = RaidLoggerStore.activeRaid.benchedCount - 1;
-    end
+function RaidLogger_LogAttended(player)
+    out("Logging attendance for " .. ColorName(player))
+    RaidLoggerStore.activeRaid.players[player] = STATE_ATTENDED
+end
+
+function RaidLogger_LogNoShow(player)
+    out("Logging no-show for " .. ColorName(player))
+    RaidLoggerStore.activeRaid.players[player] = STATE_NOSHOW
+end
+
+function RaidLogger_LogLateShow(player)
+    out("Logging late show for " .. ColorName(player))
+    RaidLoggerStore.activeRaid.players[player] = STATE_LATE
+end
+
+function RaidLogger_RemoveFromLog(player)
+    out("Removing " .. ColorName(player) .. " from log")
+    RaidLoggerStore.activeRaid.players[player] = nil 
 end
 
 function RaidLogger_UpdateRaid()
