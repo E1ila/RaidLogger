@@ -221,7 +221,7 @@ function RaidLogger_CheckBuffs(players)
         if name then
             if not players[name] then players[name] = {} end 
             RaidLogger_CheckUnitBuffs(players[name], "raid" .. i) 
-            player[name]["present"] = (player[name]["present"] or 0) + 1
+            players[name]["present"] = (players[name]["present"] or 0) + 1
         end
     end
     return players

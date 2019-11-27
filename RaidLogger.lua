@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 1.5
+local VERSION = 1.6
 local MIN_RAID_PLAYERS = 10
 
 local TRACKED_INSTANCES = {
@@ -211,8 +211,7 @@ local function LogLoot(who, loot, quantity, zone)
         table.insert(RaidLoggerStore.activeRaid.loot, {
             player = who,
             item = itemName,
-            datetime = date("%y-%m-%d %H:%M"),
-            zone = zone,
+            ts = time(),
             link = loot,
             quality = quality,
             quantity = quantity,
@@ -356,6 +355,15 @@ function RaidLogger_StartRaid()
     end
     LoggingCombat(true) -- start combat logging
     out("Started a new raid.")
+
+    local roster = {}
+    for i=1,GetNumGuildMembers() do
+        local name,rank,_,level,clas = GetGuildRosterInfo(i)
+        if level >= 40 then 
+            roster[name] = {level, clas, rank}
+        end 
+    end 
+    RaidLoggerStore.guildRoster = roster
 end
 
 function RaidLogger_EndRaid()

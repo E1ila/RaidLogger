@@ -9,7 +9,7 @@
             "request": "launch",
             "name": "Launch Program",
             "program": "${workspaceFolder}/export.js",
-            "args": ["uploadall", "http://localhost:3000/client/QOoF8Jj7MW2Ye2F8uTZlLFCHpqHL0jysQINiL3Y8"]
+            "args": ["upload", "raids", "http://localhost:3004/client/QOoF8Jj7MW2Ye2F8uTZlLFCHpqHL0jysQINiL3Y8"]
         }
     ]
 }

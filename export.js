@@ -163,7 +163,7 @@ function parseLua(lua) {
 }
 
 function readRaids(lua) {
-   let raids, classes;
+   let raids, classes, roster;
    let luaContent = fs.readFileSync(lua).toString('utf8');
    luaContent = luaContent.replace("Store = nil", "")
    try {
@@ -173,6 +173,7 @@ function readRaids(lua) {
       const dateCompare = (left, right) => left.date.localeCompare(right.date);
       raids = Object.values(store['raids']).sort(dateCompare).reverse();
       classes = store['players'] || {};
+      roster = store['guildRoster'];
 
       if (raids.length > MAX_RAID_OPTIONS)
          raids.splice(MAX_RAID_OPTIONS);
@@ -192,7 +193,7 @@ function readRaids(lua) {
       console.log(`No raids found.`);
       process.exit(1);
    }
-   return { raids, classes };
+   return { raids, classes, roster };
 }
 
 function getBuffString(playerClass, buffs) {
@@ -269,19 +270,30 @@ async function browseLua(exportPath) {
 
       const raid = raids[answerIndex];
 
-      let attendedPlayers = raid['attended']
-         .sort(sortPlayerByClass(classes))
-         .map(p => ({ p, buffs: getBuffString(classes[p], raid.buffs[p]) }))
-         .sort((a, b) => b.buffs.score - a.buffs.score)
-         .map(o => `  ${playerColor(classes[o.p])}${o.p.padEnd(12, ' ')}${nocolor} ${o.buffs.text}`)
-         .join('\n  ');
+      let attendedPlayers = raid['attended'].sort(sortPlayerByClass(classes));
+      if (raid.buffs) {
+         attendedPlayers = attendedPlayers
+            .map(p => ({ p, buffs: raid.buffs && getBuffString(classes[p], raid.buffs[p]) }))
+            .sort((a, b) => b.buffs.score - a.buffs.score)
+            .map(o => `  ${playerColor(classes[o.p])}${o.p.padEnd(12, ' ')}${nocolor} ${o.buffs.text}`)
+            .join('\n  ');
+         console.log(`\nParticipants:\n  ${attendedPlayers}${nocolor}\n`);
+      } else {
+         let playerByClass = {};
+         attendedPlayers = attendedPlayers
+            .forEach(p => playerByClass[classes[p]] = (playerByClass[classes[p]] || []).concat(`${playerColor(classes[p])}${p}`));
+         const playersGroupedByClass =
+            Object.values(playerByClass)
+               .map(players => players.join(", "))
+               .join('\n  ');
+         console.log(`\nParticipants:\n  ${playersGroupedByClass}${nocolor}\n`);
+      }
       // .forEach(p => playerByClass[classes[p]] = (playerByClass[classes[p]] || []).concat(`${playerColor(classes[p])}${p}`));
       // const playersGroupedByClass =
       //    Object.values(playerByClass)
       //       .map(players => players.join(", "))
       //       .join('\n  ');
 
-      console.log(`\nParticipants:\n  ${attendedPlayers}${nocolor}\n`);
       if (raid['benched'] && raid['benched'].length)
          console.log(`Benched:${colorInfo}\n  ${raid['benched'].join('\n  ')}${nocolor}\n`);
       console.log(`Loot:\n  ${Object.values(raid['loot'] || {}).map(o => {
@@ -315,19 +327,48 @@ async function browseLua(exportPath) {
    }
 }
 
-
-async function uploadAllRaids(apiEndpoint) {
+async function uploadRaids(apiEndpoint, logs, choose) {
    try {
       let luaFile = findLuaFile()
       const payload = readRaids(luaFile);
-      let raids = payload.raids.sort((a, b) => a['date'].localeCompare(b['date']));
       let first = true;
+      let raids;
+
+      if (choose) {
+         let raidOptions = payload.raids.map(o => raidName(o));
+         raidOptions.push('Cancel');
+
+         console.log('');
+         let answers = await inquirer.promptAsync([{
+            type: 'list',
+            name: 'action',
+            message: 'Choose a raid:',
+            choices: raidOptions
+         }]);
+         let answerIndex = raidOptions.indexOf(answers['action']);
+         console.log('');
+
+         if (answerIndex === raidOptions.length - 1)
+            process.exit(0);
+
+            raids = [payload.raids[answerIndex]];
+      } else 
+         raids = payload.raids.sort((a, b) => a['date'].localeCompare(b['date']));
 
       for (let raid of raids) {
-         console.log(`Uploading raid ${raidName(raid)}`)
+         // fix local time
+         if (!raid.startTime)
+            raid.startTime = (+moment(raid.date, 'YY-MM-DD HH:mm:ss')) / 1000;
+
+         console.log(`Uploading raid ${raidName(raid)} to ${apiEndpoint + "/raid"}...`)
          const response = await request(apiEndpoint + "/raid", {
             method: 'POST',
-            data: {raid, classes: first ? payload.classes : null},
+            data: {
+               logs,
+               raid, 
+               classes: first ? payload.classes : null,
+               roster: first ? payload.roster : null,
+            },
          });   
          first = false;
          if (response.statusCode === 200) {
@@ -342,8 +383,42 @@ async function uploadAllRaids(apiEndpoint) {
             }
          } else {
             console.error("Unexpected HTTP status: " + response.statusCode);
+            console.error("Response body: " + response.body);
             console.debug(JSON.stringify(raid));
          }
+      }
+   } catch (e) {
+      console.error(`Exception: ${e.stack}`);
+   }
+}
+
+
+async function uploadBuffs(apiEndpoint) {
+   try {
+      console.log(`Uploading buffs...`)
+      const buffs = Object.keys(BUFFS).map(spellId => ({
+         spellId, 
+         desc: BUFFS[spellId].desc, 
+         name: BUFFS[spellId].name, 
+         score: BUFFS[spellId].score, 
+         type: BUFFS[spellId].type, 
+         onetime: BUFFS[spellId].onetime ? 1 : 0, 
+         ignore: (BUFFS[spellId].ignore || []).join(','),
+         imageUrl: BUFFS[spellId].imageUrl,
+      }));
+      const response = await request(apiEndpoint + "/buffs", {
+         method: 'POST',
+         data: {buffs},
+      });   
+      if (response.statusCode === 200) {
+         const responseContent = JSON.parse(response.body);
+         if (responseContent.error) {
+            console.error(responseContent.error);
+            // console.debug(JSON.stringify(BUFFS));
+         }
+      } else {
+         console.error("Unexpected HTTP status: " + response.statusCode);
+         // console.debug(JSON.stringify(BUFFS));
       }
    } catch (e) {
       console.error(`Exception: ${e.stack}`);
@@ -355,21 +430,29 @@ async function main() {
       .command('browse')
       .description('Browse raids in LUA')
       .option("-e, --export <exportPath>", "Path to export data", ".")
-      .action(function (options) {
-         browseLua(options['exportPath']);
+      .action(async function (options) {
+         await browseLua(options['exportPath']);
+         console.log('Done.');
       });
 
    program
-      .command('uploadall <url')
-      .description('Uploads all raids to guild\'s website')
-      .action(function (apiurl, options) {
-         uploadAllRaids(apiurl);
+      .command('upload <what> <url>')
+      .description('Uploads data to guild\'s website\n  <what>   raids / buffs\n  <url>    website API endpoint URL')
+      .option('--logs <url>', 'Link to raid logs')
+      .action(async function (what, apiurl, options) {
+         if (what === "raid") 
+            await uploadRaids(apiurl, options.logs, true);
+         else if (what === "raids") 
+            await uploadRaids(apiurl, options.logs);
+         else if (what === "buffs") 
+            await uploadBuffs(apiurl);
+         console.log('Done.');
       });
 
    program.parse(process.argv);
 
-   if (program.args.length === 0)
-      program.help();
+   // if (program.args.length === 0)
+      // program.help();
 }
 
 main();
