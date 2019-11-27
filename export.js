@@ -179,8 +179,6 @@ function readRaids(lua) {
          raids.splice(MAX_RAID_OPTIONS);
 
       raids.forEach(raid => {
-         raid['attended'] = Object.values(raid['attended']);
-         raid['benched'] = Object.values(raid['benched']);
          raid['loot'] = Object.values(raid['loot']);
       });
    } catch (e) {
@@ -240,7 +238,11 @@ function backup(exportPath) {
 }
 
 function raidName(o) {
-   return `${o['date']} / ${o['zone']} / ${o['attendedCount']} participants, ${o['benchedCount']} benched`;
+   return `${o['date']} / ${o['zone']}`;
+}
+
+function filterPlayers(players, filter) {
+   return Object.keys(players).map(name => players[name] === filter ? name : null).filter(name => !!name);
 }
 
 async function browseLua(exportPath) {
@@ -270,7 +272,12 @@ async function browseLua(exportPath) {
 
       const raid = raids[answerIndex];
 
-      let attendedPlayers = raid['attended'].sort(sortPlayerByClass(classes));
+      let attendedPlayers = [];
+      if (raid['attended']) 
+         attendedPlayers = raid['attended'].sort(sortPlayerByClass(classes));
+      else if (raid['players'])
+         attendedPlayers = filterPlayers(raid['players'], 'a').sort(sortPlayerByClass(classes));
+
       if (raid.buffs) {
          attendedPlayers = attendedPlayers
             .map(p => ({ p, buffs: raid.buffs && getBuffString(classes[p], raid.buffs[p]) }))
@@ -294,8 +301,14 @@ async function browseLua(exportPath) {
       //       .map(players => players.join(", "))
       //       .join('\n  ');
 
-      if (raid['benched'] && raid['benched'].length)
+      if (raid['benched'] && raid['benched'].length) 
          console.log(`Benched:${colorInfo}\n  ${raid['benched'].join('\n  ')}${nocolor}\n`);
+      else if (raid['players']) {
+         console.log(`Benched:${colorInfo}\n  ${filterPlayers(raid['players'], 'b').join('\n  ')}${nocolor}\n`);
+         console.log(`No show:${colorInfo}\n  ${filterPlayers(raid['players'], 'n').join('\n  ')}${nocolor}\n`);
+         console.log(`Late:${colorInfo}\n  ${filterPlayers(raid['players'], 'l').join('\n  ')}${nocolor}\n`);
+      }
+
       console.log(`Loot:\n  ${Object.values(raid['loot'] || {}).map(o => {
          if (o['de'])
             return `${colorGreen}Disenchanted ${qualityColor[o['quality']]}[${o['item']}]${nocolor}`;
