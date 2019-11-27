@@ -76,14 +76,6 @@ module.exports = {
       "score": 5,
       "imageUrl": "https://wow.zamimg.com/images/wow/icons/large/inv_potion_45.jpg",
    },
-   "17543": {
-      "name": "Greater Fire Protection",
-      "desc": "Greater Fire Protection Potion",
-      "type": "Consumable",
-      "score": 600,
-      "onetime": true,
-      "imageUrl": "https://wow.zamimg.com/images/wow/icons/large/inv_potion_24.jpg",
-   },
    "17549": {
       "name": "Greater Arcane Protection",
       "desc": "Greater Arcane Protection Potion",
@@ -91,6 +83,14 @@ module.exports = {
       "score": 600,
       "onetime": true,
       "imageUrl": "https://wow.zamimg.com/images/wow/icons/large/inv_potion_83.jpg",
+   },
+   "17543": {
+      "name": "Greater Fire Protection",
+      "desc": "Greater Fire Protection Potion",
+      "type": "Consumable",
+      "score": 600,
+      "onetime": true,
+      "imageUrl": "https://wow.zamimg.com/images/wow/icons/large/inv_potion_24.jpg",
    },
    "7233": {
       "name": "Fire Protection",
