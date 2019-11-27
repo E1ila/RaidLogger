@@ -49,6 +49,11 @@ local BUFFS = {
         desc = "Mageblood Potion",
         type = "Consumable",
      },
+     ["17549"] = {
+        name = "Greater Arcane Protection",
+        desc = "Greater Arcane Protection Potion",
+        type = "Consumable"
+    },
     ["17543"] = {
         name = "Greater Fire Protection",
         desc = "Greater Fire Protection Potion",
@@ -198,8 +203,8 @@ local BUFFS = {
         desc = "Smoked Desert Dumpling",
         type = "Food",
     },
-    ["18284"] = {
-        name = "Gordok Green Grog (9 sta)",
+    ["22789"] = {
+        name = "Gordok Green Grog (10 sta)",
         desc = "DMT beer",
         type = "Alcohol",
     },
