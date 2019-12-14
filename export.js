@@ -10,6 +10,8 @@ const
    colors = require('ansi-256-colors'),
    program = require('commander'),
    request = require('async-request'),
+   Promise = require('bluebird'),
+   lineReader = require('line-reader'),
    colorInfo = colors.fg.getRgb(0, 1, 4),
    colorWarning = colors.fg.getRgb(5, 5, 0),
    colorBrown = colors.fg.getRgb(4, 2, 1),
@@ -227,14 +229,35 @@ function findLuaFile() {
       console.error(`Couldn't find RaidLogger.lua output file! It should be under SavedVariables after finishing a raid with /rl end`);
       process.exit(1);
    }
-   console.log(`\nUsing ${colorWarning}${luaFile}${nocolor}`);
+   console.log(`Using ${colorWarning}${luaFile}${nocolor}`);
 
    return luaFile;
 }
 
-function backup(exportPath) {
-   const backupFilename = `backup-${moment().format('YYYYMMDDHHmmss')}.lua`;
-   fs.copyFileSync(luaFile, path.join(exportPath, backupFilename))
+function findLogFile(required) {
+   let logsDir = searchRecursive(__dirname, 'Logs', 1);
+   if (!logsDir) {
+      if (!required) return;
+      console.error(`Couldn't find WoW Logs folder! Make sure to run this file somewhere within your WoW folder, or one of its sub-folders`);
+      process.exit(1);
+   }
+
+   let logFile = searchRecursive(logsDir, 'WoWCombatLog.txt', 0);
+   if (!logFile) {
+      if (!required) return;
+      console.error(`Couldn't find Logs/WoWCombatLog.txt file! It should be under Logs after logging out.`);
+      process.exit(1);
+   }
+   console.log(`Found log file ${colorWarning}${logFile}${nocolor}`);
+
+   return logFile;
+}
+
+function backup(backupPath, sourceFile, postfix, ext) {
+   if (!backupPath) return;
+   const backupFile = path.join(backupPath, `${postfix}-${moment().format('YYYYMMDDHHmmss')}.${ext}`);
+   console.log(`Backing up ${sourceFile} ==> ${backupFile}`);
+   fs.copyFileSync(sourceFile, backupFile);
 }
 
 function raidName(o) {
@@ -245,16 +268,37 @@ function filterPlayers(players, filter) {
    return Object.keys(players).map(name => players[name] === filter ? name : null).filter(name => !!name);
 }
 
+function handleServerResponse(response, debugObj) {
+   if (response.statusCode === 200) {
+      const responseContent = JSON.parse(response.body);
+      if (responseContent.error) {
+         if (responseContent.errorCode === 1) {
+            console.warn(responseContent.error);
+         } else {
+            console.error(responseContent.error);
+            if (debugObj)
+               console.debug(JSON.stringify(debugObj));
+         }
+      }
+      else if (responseContent.ok)
+         return true;
+   } else {
+      console.error("Unexpected HTTP status: " + response.statusCode);
+      console.error("Response body: " + response.body);
+      if (debugObj)
+         console.debug(JSON.stringify(debugObj));
+   }
+}
+
 async function browseLua(exportPath) {
    try {
       let luaFile = findLuaFile()
-      // backup()
 
       const { raids, classes } = readRaids(luaFile);
-      let answerIndex = 0
+      let raidOptions = raids.map(o => raidName(o));
+      let answerIndex = 0; // raidOptions.indexOf('19-10-23 22:46 / The Molten Core');
 
       if (!USE_LAST_RAID) {
-         let raidOptions = raids.map(o => raidName(o));
          raidOptions.push('Cancel');
 
          console.log('');
@@ -273,8 +317,8 @@ async function browseLua(exportPath) {
       const raid = raids[answerIndex];
 
       let attendedPlayers = [];
-      if (raid['attended']) 
-         attendedPlayers = raid['attended'].sort(sortPlayerByClass(classes));
+      if (raid['attended'])
+         attendedPlayers = Object.values(raid['attended']).sort(sortPlayerByClass(classes));
       else if (raid['players'])
          attendedPlayers = filterPlayers(raid['players'], 'a').sort(sortPlayerByClass(classes));
 
@@ -301,7 +345,7 @@ async function browseLua(exportPath) {
       //       .map(players => players.join(", "))
       //       .join('\n  ');
 
-      if (raid['benched'] && raid['benched'].length) 
+      if (raid['benched'] && raid['benched'].length)
          console.log(`Benched:${colorInfo}\n  ${raid['benched'].join('\n  ')}${nocolor}\n`);
       else if (raid['players']) {
          console.log(`Benched:${colorInfo}\n  ${filterPlayers(raid['players'], 'b').join('\n  ')}${nocolor}\n`);
@@ -340,7 +384,7 @@ async function browseLua(exportPath) {
    }
 }
 
-async function uploadRaids(apiEndpoint, logs, choose) {
+async function uploadRaids(apiEndpoint, backupPath, logs, gear, choose) {
    try {
       let luaFile = findLuaFile()
       const payload = readRaids(luaFile);
@@ -364,9 +408,11 @@ async function uploadRaids(apiEndpoint, logs, choose) {
          if (answerIndex === raidOptions.length - 1)
             process.exit(0);
 
-            raids = [payload.raids[answerIndex]];
-      } else 
+         raids = [payload.raids[answerIndex]];
+      } else
          raids = payload.raids.sort((a, b) => a['date'].localeCompare(b['date']));
+
+      backup(backupPath, luaFile, "raids", "lua");
 
       for (let raid of raids) {
          // fix local time
@@ -378,61 +424,134 @@ async function uploadRaids(apiEndpoint, logs, choose) {
             method: 'POST',
             data: {
                logs,
-               raid, 
+               raid,
                classes: first ? payload.classes : null,
                roster: first ? payload.roster : null,
             },
-         });   
+         });
          first = false;
-         if (response.statusCode === 200) {
-            const responseContent = JSON.parse(response.body);
-            if (responseContent.error) {
-               if (responseContent.errorCode === 1) {
-                  console.warn(responseContent.error);
-               } else {
-                  console.error(responseContent.error);
-                  console.debug(JSON.stringify(raid));
-               }
-            }
-         } else {
-            console.error("Unexpected HTTP status: " + response.statusCode);
-            console.error("Response body: " + response.body);
-            console.debug(JSON.stringify(raid));
-         }
+         handleServerResponse(response);
       }
+
+      if (gear && raids.length)
+         await uploadGear(apiEndpoint, backupPath, payload.classes, raids[0]);
    } catch (e) {
-      console.error(`Exception: ${e.stack}`);
+      console.error(`Failed uploading raid: ${e.stack}`);
    }
 }
 
+async function uploadGear(apiEndpoint, backupPath, classes, raidInfo) {
+   try {
+      const logFile = findLogFile(true);
+
+      if (!logFile)
+         return;
+
+      if (!classes) {
+         let luaFile = findLuaFile()
+         const payload = readRaids(luaFile);
+         classes = payload.classes;
+      }
+   
+      const extraInfo = raidInfo ? `-${raidInfo.zone}` : "";
+      backup(backupPath, logFile, "combatlog" + extraInfo, "txt");
+
+      const { players, playerGear } = await parseCombatLog(logFile);
+
+      const gear = {};
+      for (let guid of Object.keys(players)) {
+         const name = players[guid].split("-")[0];
+         gear[name] = {class: classes[name], gear: playerGear[guid]};
+      }
+
+      console.log(`Uploading gear...`);
+
+      const response = await request(apiEndpoint + "/gear", {
+         method: 'POST',
+         data: gear,
+      });
+      const ok = handleServerResponse(response);
+
+      if (ok) {
+         console.log(`Deleting combat log...`);
+         fs.unlinkSync(logFile);
+      }
+
+   } catch (e) {
+      console.error(`Failed uploading combat logs: ${e.stack}`);
+   }
+}
+
+function clCreateIter(line) {
+   return {line, pos: 0};
+}
+
+function clNextVar(iter, skipCount) {
+   for (let i = 0; i < (skipCount || 0); i++)
+      clNextVar(iter);
+   let value = "";
+   let pos = iter.line.indexOf(",", iter.pos + 1);
+   if (pos !== -1) {
+      const value = iter.line.substr(iter.pos + 1, pos - iter.pos - 1);
+      iter.pos = pos;
+      return value;
+   }
+   iter.pos = iter.line.length;
+   return null;
+}
+
+async function parseCombatLog(logFile) {
+   const players = {};
+   const playerGear = {};
+
+   console.log('Parsing combat log...');
+
+   const COMBATANT_INFO = "COMBATANT_INFO";
+   const SPELL_AURA_APPLIED = "SPELL_AURA_APPLIED";
+
+   var eachLine = Promise.promisify(lineReader.eachLine);
+   let missing = 0;
+   await eachLine(logFile, (line) => {
+      if (line.length > 100 && line.substr(line.indexOf("  ") + 2, COMBATANT_INFO.length) === COMBATANT_INFO) {
+         const iter = clCreateIter(line);
+         const playerGUID = clNextVar(iter, 1);
+         if (!playerGear[playerGUID])
+            missing++;
+         playerGear[playerGUID] = iter.line.substr(iter.pos + 1);
+      }
+      if (missing && line.length > 100 && line.substr(line.indexOf("  ") + 2, SPELL_AURA_APPLIED.length) === SPELL_AURA_APPLIED) {
+         const iter = clCreateIter(line);
+         const playerGUID = clNextVar(iter, 1);
+         const playerName = clNextVar(iter);
+         if (!players[playerGUID] && playerGear[playerGUID]) {
+            players[playerGUID] = playerName.replace(/"/g, "");
+            missing--;
+         }
+      }
+   })
+
+   console.log('Finished parsing combat log.');
+   return {players, playerGear};
+}
 
 async function uploadBuffs(apiEndpoint) {
    try {
       console.log(`Uploading buffs...`)
       const buffs = Object.keys(BUFFS).map(spellId => ({
-         spellId, 
-         desc: BUFFS[spellId].desc, 
-         name: BUFFS[spellId].name, 
-         score: BUFFS[spellId].score, 
-         type: BUFFS[spellId].type, 
-         onetime: BUFFS[spellId].onetime ? 1 : 0, 
+         spellId,
+         desc: BUFFS[spellId].desc,
+         name: BUFFS[spellId].name,
+         score: BUFFS[spellId].score,
+         type: BUFFS[spellId].type,
+         onetime: BUFFS[spellId].onetime ? 1 : 0,
          ignore: (BUFFS[spellId].ignore || []).join(','),
          imageUrl: BUFFS[spellId].imageUrl,
       }));
       const response = await request(apiEndpoint + "/buffs", {
          method: 'POST',
-         data: {buffs},
-      });   
-      if (response.statusCode === 200) {
-         const responseContent = JSON.parse(response.body);
-         if (responseContent.error) {
-            console.error(responseContent.error);
-            // console.debug(JSON.stringify(BUFFS));
-         }
-      } else {
-         console.error("Unexpected HTTP status: " + response.statusCode);
-         // console.debug(JSON.stringify(BUFFS));
-      }
+         data: { buffs },
+      });
+      handleServerResponse(response);
    } catch (e) {
       console.error(`Exception: ${e.stack}`);
    }
@@ -451,21 +570,25 @@ async function main() {
    program
       .command('upload <what> <url>')
       .description('Uploads data to guild\'s website\n  <what>   raids / buffs\n  <url>    website API endpoint URL')
+      .option('--backup <path>', 'Back up files to this directory')
+      .option('--gear', 'Parse and upload gear from WoWCombatLog.txt, will also backup/delete it')
       .option('--logs <url>', 'Link to raid logs')
       .action(async function (what, apiurl, options) {
-         if (what === "raid") 
-            await uploadRaids(apiurl, options.logs, true);
-         else if (what === "raids") 
-            await uploadRaids(apiurl, options.logs);
-         else if (what === "buffs") 
+         if (what === "raid")
+            await uploadRaids(apiurl, options.backup, options.logs, options.gear, true);
+         else if (what === "raids")
+            await uploadRaids(apiurl, options.backup, options.logs, options.gear);
+         else if (what === "buffs")
             await uploadBuffs(apiurl);
+         else if (what === "gear")
+            await uploadGear(apiurl, options.backup);
          console.log('Done.');
       });
 
    program.parse(process.argv);
 
    // if (program.args.length === 0)
-      // program.help();
+   // program.help();
 }
 
 main();

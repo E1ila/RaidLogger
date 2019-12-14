@@ -305,7 +305,7 @@ function RaidLogger_Main(msg)
         elseif RaidLoggerStore.activeRaid.lootCount == 0 then
             out("No loot logged!")
         else
-            if RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].de then
+            if RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].de == 1 then
                 RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].de = 0
                 out(RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].item .. "|r |cFFaaaa00unmarked|r as disenchanted")
             else
@@ -319,7 +319,7 @@ function RaidLogger_Main(msg)
         elseif RaidLoggerStore.activeRaid.lootCount == 0 then
             out("No loot logged!")
         else
-            if RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].os then
+            if RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].os == 1 then
                 RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].os = 0
                 out(RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].item .. "|r |cFFaaaa00unmarked|r as an off-spec item")
             else
@@ -403,8 +403,10 @@ function RaidLogger_LogBenched(player)
 end
 
 function RaidLogger_LogAttended(player)
-    out("Logging attendance for " .. ColorName(player))
-    RaidLoggerStore.activeRaid.players[player] = STATE_ATTENDED
+    if RaidLoggerStore.activeRaid.players[player] ~= STATE_ATTENDED then 
+        out("Logging attendance for " .. ColorName(player))
+        RaidLoggerStore.activeRaid.players[player] = STATE_ATTENDED
+    end 
 end
 
 function RaidLogger_LogNoShow(player)
@@ -451,9 +453,9 @@ function RaidLogger_UpdateRaid()
     for i = 1, raidSize do
         local name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML = GetRaidRosterInfo(i)
         if name then
-            RaidLogger_Attend(name)
+            RaidLogger_LogAttended(name)
+            RaidLoggerStore.players[name] = class
         end
-        RaidLoggerStore.players[name] = class
     end
 
     -- out("Attendance updated.")
