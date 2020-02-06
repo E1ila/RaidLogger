@@ -76,9 +76,8 @@
         </Backdrop>
         <Scripts>
             <OnLoad>
-   			    self:SetBackdropColor (0, 0, 0, 1)
+   			    self:SetBackdropColor (0.1, 0.1, 0.1, 1)
     		    self:SetBackdropBorderColor(0, 0, 0, 1)
-                self.rows = {}
             </OnLoad>
         </Scripts>
 
@@ -122,7 +121,7 @@
                 </Backdrop>
                 <Scripts>
                     <OnLoad>
-       			        self:SetBackdropColor(0.5, 0.5, 0.5, 0.3)
+       			        self:SetBackdropColor(0.5, 0.5, 0.5, 0.1)
         	        	self:SetBackdropBorderColor(0, 0, 0, 0)
                         self:RegisterForDrag("LeftButton")
                     </OnLoad>
@@ -165,7 +164,7 @@
                 </Backdrop>
                 <Scripts>
                     <OnLoad>
-                        self:SetBackdropColor(0.5, 0.5, 0.5, 0.2)
+                        self:SetBackdropColor(0, 0, 0, 1)
         		        self:SetBackdropBorderColor(0, 0, 0, 0)
                     </OnLoad>
                 </Scripts>
@@ -277,7 +276,7 @@
                 </Scripts>
             </Button>
 
-            <ScrollFrame name="$parent_Scroll" inherits="UIPanelScrollFrameTemplate" enableMouse="true">
+            <ScrollFrame name="$parent_LootTab" inherits="UIPanelScrollFrameTemplate" enableMouse="true">
                 <Anchors>
                     <Anchor point="TOPLEFT" relativeTo="$parent_Buttons" relativePoint="BOTTOMLEFT">
                         <Offset x="5" y="-3" />
@@ -290,7 +289,7 @@
                     <OnLoad>
                         self:SetHorizontalScroll(0)
                         self:SetVerticalScroll(0)
-                        RaidLogger_RaidWindow.scroll = self
+                        self.rows = {}
                     </OnLoad>
                 </Scripts>
                 <ScrollChild>
@@ -302,7 +301,7 @@
                         </Anchors>
                         <Scripts>
                             <OnLoad>
-                                RaidLogger_RaidWindow.scrollContent = self
+                                RaidLogger_RaidWindow_LootTab.scrollContent = self
                             </OnLoad>
                         </Scripts>
                     </Frame>

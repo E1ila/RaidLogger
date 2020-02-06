@@ -221,7 +221,7 @@ function RaidLogger_Commands(msg)
     -- out("cmd " .. cmd .. " / arg1 " .. arg1)
     if not cmd then
         RaidLogger:ChooseLastRaid()
-        RaidLogger_RaidWindow:Refresh()
+        RaidLogger_RaidWindow_LootTab:Refresh()
         RaidLogger_RaidWindow:Show()
     elseif  "S" == cmd or "START" == cmd then
         RaidLogger:UpdateRaid()
@@ -456,7 +456,8 @@ function RaidLogger:UpdateRaid()
 end
 
 function RaidLogger:ChooseLastRaid()
-    editRaid = RaidLoggerStore.activeRaid or RaidLoggerStore.raids[#RaidLoggerStore.raids]
+    -- editRaid = RaidLoggerStore.activeRaid or RaidLoggerStore.raids[#RaidLoggerStore.raids]
+    editRaid = RaidLoggerStore.activeRaid or RaidLoggerStore.raids[#RaidLoggerStore.raids-1]
 end
 
 
@@ -495,7 +496,7 @@ function RaidLoggerFrame:OnEvent(event, arg1)
                 EndRaidReminder()
             end
             RaidLogger:ChooseLastRaid()
-            RaidLogger_RaidWindow:Refresh()
+            RaidLogger_RaidWindow_LootTab:Refresh()
         end 
     else
         -- out("|c44FFFFFF"..event.." event")
@@ -525,6 +526,8 @@ end
 -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 --   CURRENT RAID WINDOW
 
+-- tabs ----------
+
 function RaidLogger:SetTabBackdropColor(btn, hovering)
 	if btn.disabled then 
 		btn:SetBackdropColor(0.3, 0.3, 0.3, 0.1)
@@ -532,22 +535,22 @@ function RaidLogger:SetTabBackdropColor(btn, hovering)
 		btn.label:SetTextColor(0.8, 0.8, 0.8, 0.5)
 	elseif hovering then 
 		if btn.selected then 
-			btn:SetBackdropColor(0, 0, 0, 1)
-            btn:SetBackdropBorderColor(0, 0, 0, 1)
+			btn:SetBackdropColor(0.1, 0.1, 0.1, 1)
+            btn:SetBackdropBorderColor(0.1, 0.1, 0.1, 1)
 			btn.label:SetTextColor(1, 1, 1, 1)
 		else 
-			btn:SetBackdropColor(1, 1, 1, 0.1)
-            btn:SetBackdropBorderColor(0.1, 0.1, 0.1, 1)
+			btn:SetBackdropColor(0, 0, 0, 1)
+            btn:SetBackdropBorderColor(0, 0, 0, 1)
 			btn.label:SetTextColor(255/255, 238/255, 200/255, 1)
 		end 
 	else 
 		if btn.selected then 
-			btn:SetBackdropColor(0, 0, 0, 1)
-            btn:SetBackdropBorderColor(0, 0, 0, 1)
+			btn:SetBackdropColor(0.1, 0.1, 0.1, 1)
+            btn:SetBackdropBorderColor(0.1, 0.1, 0.1, 1)
 			btn.label:SetTextColor(1, 1, 1, 1)
 		else 
-			btn:SetBackdropColor(0.7, 0.7, 0.7, 0.1)
-            btn:SetBackdropBorderColor(0.1, 0.1, 0.1, 1)
+			btn:SetBackdropColor(0, 0, 0, 1)
+            btn:SetBackdropBorderColor(0, 0, 0, 1)
 			btn.label:SetTextColor(0.8, 0.8, 0.8, 1)
 		end 
 	end 
@@ -569,6 +572,8 @@ function RaidLogger_RaidWindow_Buttons_LootTab:Clicked(clickedButton)
     RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_ParticipantsTab, false)
 end 
 
+-- rows ----------
+
 local function HideRowsBeyond(j, container)
 	local n = #container.rows;
 	if j <= n then 
@@ -578,7 +583,7 @@ local function HideRowsBeyond(j, container)
 	end 
 end
 
-function RaidLogger_RaidWindow:AddRow(players, entry, activeRaid) 
+function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid) 
 	self.visibleRows = self.visibleRows + 1
 
     local existingRow = self.rows[self.visibleRows]
@@ -587,18 +592,20 @@ function RaidLogger_RaidWindow:AddRow(players, entry, activeRaid)
 	if not row.root then 
 		row.root = CreateFrame("FRAME", nil, self.scrollContent);		
 		-- row.root:SetWidth(self.scrollContent:GetWidth() - 20);
-        row.root:SetHeight(24);
+        row.root:SetHeight(28);
         row.root:SetBackdrop({bgFile = "Interface/Tooltips/UI-Tooltip-Background"})
-        row.root:SetBackdropColor(1, 1, 1, 0.1)
+        row.root:SetBackdropColor(0, 0, 0, 0.6)
 		if #self.rows == 0 then 
-			row.root:SetPoint("TOPLEFT", self.scrollContent);
-			row.root:SetPoint("RIGHT", self.scroll, 0, 0);
+			row.root:SetPoint("TOPLEFT", self.scrollContent, 0, -25);
+			row.root:SetPoint("RIGHT", self, 0, 0);
 		else 
 			row.root:SetPoint("TOPLEFT", self.rows[#self.rows].root, "BOTTOMLEFT", 0, -2);
 			row.root:SetPoint("TOPRIGHT", self.rows[#self.rows].root, "BOTTOMRIGHT", 0, -2);
 		end 
 	end     
     row.root:Show();
+
+    local playerDropdownOffX = -24
 
     if not row.statusImage then 
         row.statusFrame = CreateFrame("FRAME", nil, row.root);
@@ -611,6 +618,7 @@ function RaidLogger_RaidWindow:AddRow(players, entry, activeRaid)
         row.statusImage:SetAllPoints(row.statusFrame)
     end 
     if activeRaid then 
+        playerDropdownOffX = -10
         local statusImage = "question"
         local statusTooltip = "Undecided"
         if entry.status == 1 then 
@@ -634,7 +642,7 @@ function RaidLogger_RaidWindow:AddRow(players, entry, activeRaid)
     if not row.timeLabel then 
 		row.timeLabel = row.root:CreateFontString(nil, "ARTWORK", "ChatFontNormal")
 		row.timeLabel:SetTextColor(0.8, 0.8, 0.8, 1)
-		row.timeLabel:SetPoint("RIGHT", row.statusFrame, "LEFT", -6, 0)
+		row.timeLabel:SetPoint("RIGHT", row.root, "LEFT", 40, 0)
 		row.timeLabel:SetFont(FONT_NAME, 10)
 	end 
 	row.timeLabel:SetText(date("%H:%M", entry.ts));
@@ -649,7 +657,6 @@ function RaidLogger_RaidWindow:AddRow(players, entry, activeRaid)
             UIDropDownMenu_SetText(row.playerDropdown, self.value)
         end
         row.playerDropdown = CreateFrame("Frame", "RaidLogger_RaidWindow_PlayerDropdown"..(self.visibleRows), row.root, "UIDropDownMenuTemplate")
-        row.playerDropdown:SetPoint("LEFT", row.statusImage, "RIGHT", -10, -2)
         UIDropDownMenu_SetWidth(row.playerDropdown, 100) 
         UIDropDownMenu_JustifyText(row.playerDropdown, "LEFT")
         UIDropDownMenu_Initialize(row.playerDropdown, function (frame, level, menuList)
@@ -662,6 +669,8 @@ function RaidLogger_RaidWindow:AddRow(players, entry, activeRaid)
         end)
         row.playerDropdown:Show()    
     end 
+	row.playerDropdown:ClearAllPoints()
+    row.playerDropdown:SetPoint("LEFT", row.statusImage, "RIGHT", playerDropdownOffX, -2)
     UIDropDownMenu_SetText(row.playerDropdown, entry.tradedTo or entry.player)
 
 	if not row.label then 
@@ -672,7 +681,7 @@ function RaidLogger_RaidWindow:AddRow(players, entry, activeRaid)
 		row.label:SetPoint("TOPLEFT", row.playerDropdown, "TOPRIGHT", -7, 0)
         row.label:SetPoint("BOTTOMLEFT", row.playerDropdown, "BOTTOMRIGHT", -7, 3)
         row.label:SetJustifyV("MIDDLE");
-		row.label:SetFont(FONT_NAME, 10)
+		row.label:SetFont(FONT_NAME, 12)
 
         row.labelFrame:SetPoint("TOPLEFT", row.label)
         row.labelFrame:SetPoint("BOTTOMLEFT", row.label)
@@ -737,7 +746,7 @@ function RaidLogger_RaidWindow:AddRow(players, entry, activeRaid)
 	return row
 end 
 
-function RaidLogger_RaidWindow:Refresh()
+function RaidLogger_RaidWindow_LootTab:Refresh()
     self.visibleRows = 0
     
     if editRaid then 
@@ -756,7 +765,7 @@ function RaidLogger_RaidWindow:Refresh()
         for i = #editRaid.loot, 1, -1 do
             local entry = editRaid.loot[i]
             if entry.quality >= 4 or (entry.quality == 3 and (string.find(entry.item, "Recipe: ") == 1 or string.find(entry.item, "Formula: ") == 1 or string.find(entry.item, "Schematic: ") == 1)) then 
-                RaidLogger_RaidWindow:AddRow(players, entry)
+                RaidLogger_RaidWindow_LootTab:AddRow(players, entry)
             end 
         end
     end
