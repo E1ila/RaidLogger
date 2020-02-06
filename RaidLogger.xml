@@ -212,7 +212,7 @@
                         </Scripts>
                     </Button>                    <!--$parent_LootTab-->
 
-                    <Button name="$parent_ParticipantsTab">
+                    <Button name="$parent_PlayersTab">
                         <Size>
                             <AbsDimension x="70" y="22"/>
                         </Size>
@@ -240,7 +240,7 @@
                         <Scripts>
                             <OnLoad>
             				    self:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-                                self.label = RaidLogger_RaidWindow_Buttons_ParticipantsTab_Text
+                                self.label = RaidLogger_RaidWindow_Buttons_PlayersTab_Text
                             </OnLoad>
                             <OnEnter>
                                 RaidLogger:SetTabBackdropColor(self, true)
@@ -252,7 +252,7 @@
                                 self:Clicked(button)
                             </OnClick>
                         </Scripts>
-                    </Button>                    <!--$parent_ParticipantsTab-->
+                    </Button>                    <!--$parent_PlayersTab-->
 
                 </Frames>
             </Frame>            <!--$parent_Buttons-->
@@ -304,6 +304,132 @@
                                 RaidLogger_RaidWindow_LootTab.scrollContent = self
                             </OnLoad>
                         </Scripts>
+                        <Frames>
+                            <EditBox name="RaidLogger_Loot_SearchBox" letters="80" autoFocus="false">
+                                <Size x="150" y="20" />
+                                <Anchors>
+                                    <Anchor point="RIGHT" relativePoint="RIGHT" relativeTo="RaidLogger_RaidWindow_LootTab" />
+                                    <Anchor point="TOP" y="-1" />
+                                </Anchors>
+                                <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
+                                    <EdgeSize>
+                                        <AbsValue val="1"></AbsValue>
+                                    </EdgeSize>
+                                    <TileSize>
+                                        <AbsValue val="16" />
+                                    </TileSize>
+                                </Backdrop>
+                                <Layers>
+                                    <Layer level="BACKGROUND">
+                                        <Texture file="Interface\AddOns\RaidLogger\assets\search" alphaMode="ADD">
+                                            <Size x="16" y="16" />
+                                            <Anchors>
+                                                <Anchor point="RIGHT" x="-4" />
+                                            </Anchors>
+                                            <Color r="0.5" g="0.5" b="0.5" a="0.8" />
+                                        </Texture>
+                                    </Layer>
+                                </Layers>
+                                <Scripts>
+                                    <OnLoad>
+                                        self:SetBackdropColor(0, 0, 0, 0.8)
+            	                    	self:SetBackdropBorderColor(0.5, 0.5, 0.5, 0.3)
+                                    </OnLoad>
+                                    <OnEscapePressed>
+                                        self:ClearFocus()
+                                    </OnEscapePressed>
+                                    <OnTabPressed>
+                                        self:ClearFocus()
+                                    </OnTabPressed>
+                                    <OnTextChanged>
+                                        RaidLogger_RaidWindow_LootTab:Refresh()
+                                    </OnTextChanged>
+                                    <OnEnterPressed>
+                                        self:ClearFocus()
+                                    </OnEnterPressed>
+                                </Scripts>
+                                <FontString inherits="RaidLoggerFont" />
+                            </EditBox>
+                        </Frames>
+                    </Frame>
+                </ScrollChild>
+            </ScrollFrame>            <!--$parent_Scroll-->
+
+            <ScrollFrame name="$parent_PlayersTab" inherits="UIPanelScrollFrameTemplate" enableMouse="true">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="$parent_Buttons" relativePoint="BOTTOMLEFT">
+                        <Offset x="5" y="-3" />
+                    </Anchor>
+                    <Anchor point="BOTTOMRIGHT">
+                        <Offset x="-25" y="3" />
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnLoad>
+                        self:SetHorizontalScroll(0)
+                        self:SetVerticalScroll(0)
+                        self.rows = {}
+                    </OnLoad>
+                </Scripts>
+                <ScrollChild>
+                    <Frame name="$parent_Content">
+                        <Size x="10" y="10" />
+                        <Anchors>
+                            <Anchor point="TOPLEFT" />
+                            <Anchor point="BOTTOMRIGHT" />
+                        </Anchors>
+                        <Scripts>
+                            <OnLoad>
+                                RaidLogger_RaidWindow_PlayersTab.scrollContent = self
+                            </OnLoad>
+                        </Scripts>
+                        <Frames>
+                            <EditBox name="RaidLogger_Players_SearchBox" letters="80" autoFocus="false">
+                                <Size x="150" y="20" />
+                                <Anchors>
+                                    <Anchor point="RIGHT" relativePoint="RIGHT" relativeTo="RaidLogger_RaidWindow_PlayersTab" />
+                                    <Anchor point="TOP" y="-1" />
+                                </Anchors>
+                                <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
+                                    <EdgeSize>
+                                        <AbsValue val="1"></AbsValue>
+                                    </EdgeSize>
+                                    <TileSize>
+                                        <AbsValue val="16" />
+                                    </TileSize>
+                                </Backdrop>
+                                <Layers>
+                                    <Layer level="BACKGROUND">
+                                        <Texture file="Interface\AddOns\RaidLogger\assets\search" alphaMode="ADD">
+                                            <Size x="16" y="16" />
+                                            <Anchors>
+                                                <Anchor point="RIGHT" x="-4" />
+                                            </Anchors>
+                                            <Color r="0.5" g="0.5" b="0.5" a="0.8" />
+                                        </Texture>
+                                    </Layer>
+                                </Layers>
+                                <Scripts>
+                                    <OnLoad>
+                                        self:SetBackdropColor(0, 0, 0, 0.8)
+            	                    	self:SetBackdropBorderColor(0.5, 0.5, 0.5, 0.3)
+                                    </OnLoad>
+                                    <OnEscapePressed>
+                                        self:ClearFocus()
+                                    </OnEscapePressed>
+                                    <OnTabPressed>
+                                        self:ClearFocus()
+                                    </OnTabPressed>
+                                    <OnTextChanged>
+                                        RaidLogger_RaidWindow_PlayersTab:Refresh()
+                                    </OnTextChanged>
+                                    <OnEnterPressed>
+                                        self:ClearFocus()
+                                    </OnEnterPressed>
+                                </Scripts>
+                                <FontString inherits="RaidLoggerFont" />
+                            </EditBox>    <!-- RaidLogger_Players_SearchBox -->
+                        </Frames>
                     </Frame>
                 </ScrollChild>
             </ScrollFrame>            <!--$parent_Scroll-->
