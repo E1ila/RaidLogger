@@ -6,6 +6,15 @@
 const
    MAX_RAID_OPTIONS = 20,
    USE_LAST_RAID = false,
+   ZONE_SHORT_NAME = {
+      "Onyxia's Lair": "Onyxia",
+      "The Molten Core": "MC",
+      "Blackwing Lair": "BWL",
+      "Zul'Gurub": "ZG",
+      "Ahn'Qiraj": "AQ40",
+      "Ruins of Ahn'Qiraj": "AQ20",
+      "Naxxramas": "Naxx",
+   },
    moment = require('moment'),
    colors = require('ansi-256-colors'),
    program = require('commander'),
@@ -384,7 +393,7 @@ async function browseLua(exportPath) {
    }
 }
 
-async function uploadRaids(apiEndpoint, backupPath, logs, gear, choose) {
+async function uploadRaids(apiEndpoint, backupPath, logs, gear, retainlog, choose, combatlogsPath) {
    try {
       let luaFile = findLuaFile()
       const payload = readRaids(luaFile);
@@ -434,15 +443,15 @@ async function uploadRaids(apiEndpoint, backupPath, logs, gear, choose) {
       }
 
       if (gear && raids.length)
-         await uploadGear(apiEndpoint, backupPath, payload.classes, raids[0]);
+         await uploadGear(apiEndpoint, backupPath, retainlog, payload.classes, raids[0], combatlogsPath);
    } catch (e) {
       console.error(`Failed uploading raid: ${e.stack}`);
    }
 }
 
-async function uploadGear(apiEndpoint, backupPath, classes, raidInfo) {
+async function uploadGear(apiEndpoint, backupPath, retainlog, classes, raidInfo, combatlogsPath) {
    try {
-      const logFile = findLogFile(true);
+      const logFile = combatlogsPath || findLogFile(true);
 
       if (!logFile)
          return;
@@ -453,7 +462,7 @@ async function uploadGear(apiEndpoint, backupPath, classes, raidInfo) {
          classes = payload.classes;
       }
    
-      const extraInfo = raidInfo ? `-${raidInfo.zone}` : "";
+      const extraInfo = raidInfo ? `-${ZONE_SHORT_NAME[raidInfo.zone] || raidInfo.zone}` : "";
       backup(backupPath, logFile, "combatlog" + extraInfo, "txt");
 
       const { players, playerGear } = await parseCombatLog(logFile);
@@ -472,7 +481,7 @@ async function uploadGear(apiEndpoint, backupPath, classes, raidInfo) {
       });
       const ok = handleServerResponse(response);
 
-      if (ok) {
+      if (ok && !retainlog && !combatlogsPath) {
          console.log(`Deleting combat log...`);
          fs.unlinkSync(logFile);
       }
@@ -572,16 +581,18 @@ async function main() {
       .description('Uploads data to guild\'s website\n  <what>   raids / buffs\n  <url>    website API endpoint URL')
       .option('--backup <path>', 'Back up files to this directory')
       .option('--gear', 'Parse and upload gear from WoWCombatLog.txt, will also backup/delete it')
+      .option('--retainlog', 'Do not delete combat log')
       .option('--logs <url>', 'Link to raid logs')
+      .option('-c, --combatlogs <url>', 'Location of combat logs')
       .action(async function (what, apiurl, options) {
          if (what === "raid")
-            await uploadRaids(apiurl, options.backup, options.logs, options.gear, true);
+            await uploadRaids(apiurl, options.backup, options.logs, options.gear, options.retainlog, true, options.combatlogs);
          else if (what === "raids")
-            await uploadRaids(apiurl, options.backup, options.logs, options.gear);
+            await uploadRaids(apiurl, options.backup, options.logs, options.gear, options.retainlog, false, options.combatlogs);
          else if (what === "buffs")
             await uploadBuffs(apiurl);
          else if (what === "gear")
-            await uploadGear(apiurl, options.backup);
+            await uploadGear(apiurl, options.backup, options.retainlog, undefined, undefined, options.combatlogs);
          console.log('Done.');
       });
 

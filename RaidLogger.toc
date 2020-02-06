@@ -5,5 +5,4 @@
 ## SavedVariables: Store, RaidLoggerStore
 Deformat.lua
 Buffs.lua
-RaidLogger.lua
 RaidLogger.xml

@@ -7,6 +7,8 @@
 
 local VERSION = 1.6
 local MIN_RAID_PLAYERS = 10
+local ADDON_NAME = "RaidLogger"
+local FONT_NAME = "Fonts\\FRIZQT__.TTF"
 
 local TRACKED_INSTANCES = {
     [1] = "The Molten Core",
@@ -53,12 +55,15 @@ local QUALITY_LEGENDARY = 5 -- orange
 local BUFF_CHECK_SECONDS = 60 
 
 local lastBuffCheck = 0
+local editRaid = nil 
 
 RaidLoggerStore = {
     raids = {},
     activeRaid = nil,
     players = {},
 }
+
+RaidLogger = {}
 
 local function out(text)
 	print(" |cff0088ff<|cff00bbffRaidLogger|cff0088ff>|r "..text)
@@ -75,13 +80,6 @@ local function tableTextLookup(table, text)
         end
     end
     return false
-end
-
-local function InTrackedInstance()
-    if not IsInInstance() then return nil end
-    local zone = GetZoneText()
-    if tableTextLookup(TRACKED_INSTANCES, zone) then return zone end
-    return nil
 end
 
 -- checks if a value exists in a list
@@ -103,6 +101,32 @@ local function RemoveValue(tab, val)
         end
     end
     return false
+end
+
+local function PlaceLinkInChatEditBox(itemLink)
+	-- Copy itemLink into ChatFrame
+	local chatFrame = SELECTED_DOCK_FRAME
+	local editbox = chatFrame.editBox
+	if editbox then
+		if editbox:HasFocus() then
+			editbox:SetText(editbox:GetText()..itemLink);
+		else
+			editbox:SetFocus(true);
+			editbox:SetText(itemLink);
+		end
+	end
+end
+
+
+
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--   LOGGER LOGIC
+
+local function InTrackedInstance()
+    if not IsInInstance() then return nil end
+    local zone = GetZoneText()
+    if tableTextLookup(TRACKED_INSTANCES, zone) then return zone end
+    return nil
 end
 
 local function ConcatPlayers(tab, filter) 
@@ -145,70 +169,6 @@ local function EndRaidReminder()
     err(" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 end
 
-function RaidLogger_OnLoad(self)
-    self:RegisterEvent("ADDON_LOADED");
-    self:RegisterEvent("RAID_ROSTER_UPDATE");
-    self:RegisterEvent("GROUP_ROSTER_UPDATE");
-    self:RegisterEvent("ENCOUNTER_END");
-    self:RegisterEvent("RAID_INSTANCE_WELCOME");
-    self:RegisterEvent("ZONE_CHANGED_NEW_AREA");
-    self:RegisterEvent("CHAT_MSG_LOOT");
-
-    self:SetScript("OnEvent", function(self, event, ...) RaidLogger_OnEvent(event, ...) end)
-    self:SetScript("OnUpdate", function(self, ...) RaidLogger_OnUpdate(...) end)
-
-    SLASH_RaidLogger1 = "/rl"
-    SlashCmdList["RaidLogger"] = RaidLogger_Main
-
-    out("Logs raid attendance into a file. Write |cFF00FF00/rl help|r for a list of commands.")
-end
-
-function RaidLogger_OnUpdate()
-    if RaidLoggerStore and RaidLoggerStore.activeRaid and time() - lastBuffCheck >= BUFF_CHECK_SECONDS then 
-        -- out("checking buffs...")
-        if not RaidLoggerStore.activeRaid.buffs then RaidLoggerStore.activeRaid.buffs = {} end 
-        lastBuffCheck = time() 
-        RaidLogger_CheckBuffs(RaidLoggerStore.activeRaid.buffs)
-    end 
-end 
-
-function RaidLogger_OnEvent(event, arg1)
-    if event == "ADDON_LOADED" then
-        if arg1 == "RaidLogger" then
-            -- saved variables loaded
-            if Store and Store.raids and #Store.raids > 0 and (not RaidLoggerStore or not RaidLoggerStore.raids or #RaidLoggerStore.raids == 0) then 
-                RaidLoggerStore = Store 
-                Store = nil 
-            end 
-            if RaidLoggerStore and RaidLoggerStore.activeRaid then
-                LoggingCombat(true) -- resume combat logging
-                EndRaidReminder()
-            end
-        end
-        return
-    else
-        -- out("|c44FFFFFF"..event.." event")
-        if event == "RAID_INSTANCE_WELCOME" or event == "ZONE_CHANGED_NEW_AREA" then
-            if InTrackedInstance() and GetNumRaidMembers() >= MIN_RAID_PLAYERS then
-                RaidLogger_UpdateRaid()
-            end
-        elseif event == "CHAT_MSG_LOOT" then
-            local zone = InTrackedInstance()
-            if zone and RaidLoggerStore.activeRaid then
-                RaidLogger_ParseLootMessage(arg1, zone)
-            end
-        elseif event == "RAID_ROSTER_UPDATE" or event == "GROUP_ROSTER_UPDATE" or event == "ENCOUNTER_END" then
-            if RaidLoggerStore and RaidLoggerStore.activeRaid then
-                if GetNumRaidMembers() > 1 then
-                    RaidLogger_UpdateRaid()
-                else
-                    EndRaidReminder();
-                end
-            end
-        end
-    end
-end
-
 local function LogLoot(who, loot, quantity, zone)
     -- local vStartIndex, vEndIndex, vLinkColor, vItemCode, vItemEnchantCode, vItemSubCode, vUnknownCode, vItemName = strfind(loot, "|c(%x+)|Hitem:(%d+):(%d+):(%d+):(%d+)|h%[([^%]]+)%]|h|r");
 	local itemName, _, quality, _, _, itemType, _, _, _, _, vendorPrice = GetItemInfo(loot);
@@ -224,6 +184,8 @@ local function LogLoot(who, loot, quantity, zone)
             quantity = quantity,
             de = 0,
             os = 0,
+            votes = {},
+            status = 0,
         })
         RaidLoggerStore.activeRaid.lootCount = RaidLoggerStore.activeRaid.lootCount + 1
     end
@@ -238,7 +200,7 @@ local LootSelfMsgStrings = {
 	_G.LOOT_ITEM_SELF,                  -- You receive loot: %s.
 }
 
-function RaidLogger_ParseLootMessage(msg, zone)
+function RaidLogger:ParseLootMessage(msg, zone)
 	for _, st in ipairs(LootMsgStrings) do
 		local player, link, quantity = RaidLoggerDeformat(msg, st)
 		if player and link then 
@@ -254,48 +216,70 @@ function RaidLogger_ParseLootMessage(msg, zone)
 	end
 end
 
-function RaidLogger_Main(msg)
+function RaidLogger_Commands(msg)
     local _, _, cmd, arg1 = string.find(string.upper(msg), "([%w]+)%s*(.*)$");
     -- out("cmd " .. cmd .. " / arg1 " .. arg1)
     if not cmd then
-        RaidLogger_UpdateRaid()
+        RaidLogger:ChooseLastRaid()
+        RaidLogger_RaidWindow:Refresh()
+        RaidLogger_RaidWindow:Show()
+    elseif  "S" == cmd or "START" == cmd then
+        RaidLogger:UpdateRaid()
     elseif  "H" == cmd or "HELP" == cmd then
         out("Commands: ")
-        out("  |cFF00FF00/rl|r - update raid attendance")
-        out("  |cFF00FF00/rl add <player>|r - manually log an attended player.")
-        out("  |cFF00FF00/rl bench <player>|r - log a benched player.")
+        out("  |cFF00FF00/rl|r - show UI")
+        out("  |cFF00FF00/rl |cFF00ff95a|cFF00FF00dd <player>|r - manually log an attended player.")
+        out("  |cFF00FF00/rl |cFF00ff95b|cFF00FF00ench <player>|r - log a benched player.")
         out("  |cFF00FF00/rl de|r - marks last distributed loot item as disenchanted.")
         out("  |cFF00FF00/rl os|r - marks last distributed loot as an off-spec item.")
         out("  |cFF00FF00/rl discard|r - discard current raid, do this to ignore current raid.")        
         out("  |cFF00FF00/rl end|r - save and close raid, do this when raid ended.")
         out("  |cFF00FF00/rl p|r - print active raid, if any.")
+        out("  |cFF00FF00/rl |cFF00ff95start|r - start logging a raid or update existing one.")
+    elseif  "counsil" == cmd then
+        if arg1 and string.len(arg1) > 0 then
+            if arg1 == "disable" then
+                out("Loot council disabled.");
+                RaidLoggerStore.council = nil 
+            else 
+                RaidLogger:SetLootCouncil(FixPlayerName(arg1))
+            end 
+        else
+            err("Missing player name!")
+        end
+    elseif  "sync" == cmd then
+        if arg1 and string.len(arg1) > 0 then
+            RaidLoggerStore.sync = arg1 
+        else
+            err("Missing sync password!")
+        end
     elseif  "BENCH" == cmd or "B" == cmd then
         if arg1 and string.len(arg1) > 0 then
-            RaidLogger_LogBenched(FixPlayerName(arg1))
+            RaidLogger:LogBenched(FixPlayerName(arg1))
         else
             err("Missing player name!")
         end
     elseif  "NOSHOW" == cmd or "NS" == cmd then
         if arg1 and string.len(arg1) > 0 then
-            RaidLogger_LogNoShow(FixPlayerName(arg1))
+            RaidLogger:LogNoShow(FixPlayerName(arg1))
         else
             err("Missing player name!")
         end
     elseif  "LATE" == cmd or "L" == cmd then
         if arg1 and string.len(arg1) > 0 then
-            RaidLogger_LogLateShow(FixPlayerName(arg1))
+            RaidLogger:LogLateShow(FixPlayerName(arg1))
         else
             err("Missing player name!")
         end
     elseif  "REMOVE" == cmd or "R" == cmd then
         if arg1 and string.len(arg1) > 0 then
-            RaidLogger_RemoveFromLog(FixPlayerName(arg1))
+            RaidLogger:RemoveFromLog(FixPlayerName(arg1))
         else
             err("Missing player name!")
         end
     elseif  "ADD" == cmd or "A" == cmd then
         if arg1 and string.len(arg1) > 0 then
-            RaidLogger_LogAttend(FixPlayerName(arg1))
+            RaidLogger:LogAttend(FixPlayerName(arg1))
         else
             err("Missing player name!")
         end
@@ -351,13 +335,13 @@ function RaidLogger_Main(msg)
         out("Version |cFFFFFF00" .. VERSION)
     elseif  "END" == cmd then
         out("Raid ended, saving.")
-        RaidLogger_EndRaid()
+        RaidLogger:EndRaid()
     end
 end
 
-function RaidLogger_StartRaid()
+function RaidLogger:StartRaid()
     -- flush previous raid
-    RaidLogger_EndRaid()
+    RaidLogger:EndRaid()
 
     RaidLoggerStore.activeRaid = {
         date = date("%y-%m-%d %H:%M"),
@@ -366,7 +350,7 @@ function RaidLogger_StartRaid()
         zone = nil,
         loot = {},
         lootCount = 0,
-        buffs = {}
+        buffs = {},
     }
     if not RaidLoggerStore.players then
         RaidLoggerStore.players = {}
@@ -384,7 +368,7 @@ function RaidLogger_StartRaid()
     RaidLoggerStore.guildRoster = roster
 end
 
-function RaidLogger_EndRaid()
+function RaidLogger:EndRaid()
     if RaidLoggerStore.activeRaid then
         RaidLoggerStore.activeRaid.endTime = time()
         if not RaidLoggerStore.activeRaid.zone then
@@ -397,34 +381,44 @@ function RaidLogger_EndRaid()
     LoggingCombat(false) -- stop combat logging
 end
 
-function RaidLogger_LogBenched(player)
+function RaidLogger:SetLootCouncil(player)
+    if RaidLoggerStore.council[player] then
+        out("Removing " .. ColorName(player) .. " from loot council.")
+        RaidLoggerStore.council[player] = nil 
+    else 
+        out("Adding " .. ColorName(player) .. " to loot council.")
+        RaidLoggerStore.council[player] = true  
+    end 
+end
+
+function RaidLogger:LogBenched(player)
     out("Logging bench for " .. ColorName(player))
     RaidLoggerStore.activeRaid.players[player] = STATE_BENCHED
 end
 
-function RaidLogger_LogAttended(player)
+function RaidLogger:LogAttended(player)
     if RaidLoggerStore.activeRaid.players[player] ~= STATE_ATTENDED then 
         out("Logging attendance for " .. ColorName(player))
         RaidLoggerStore.activeRaid.players[player] = STATE_ATTENDED
     end 
 end
 
-function RaidLogger_LogNoShow(player)
+function RaidLogger:LogNoShow(player)
     out("Logging no-show for " .. ColorName(player))
     RaidLoggerStore.activeRaid.players[player] = STATE_NOSHOW
 end
 
-function RaidLogger_LogLateShow(player)
+function RaidLogger:LogLateShow(player)
     out("Logging late show for " .. ColorName(player))
     RaidLoggerStore.activeRaid.players[player] = STATE_LATE
 end
 
-function RaidLogger_RemoveFromLog(player)
+function RaidLogger:RemoveFromLog(player)
     out("Removing " .. ColorName(player) .. " from log")
     RaidLoggerStore.activeRaid.players[player] = nil 
 end
 
-function RaidLogger_UpdateRaid()
+function RaidLogger:UpdateRaid()
     local raidSize = GetNumRaidMembers()
 
     if raidSize == 0 then
@@ -435,7 +429,7 @@ function RaidLogger_UpdateRaid()
     -- out("Updating raid...")
 
     if not RaidLoggerStore.activeRaid then
-        RaidLogger_StartRaid();
+        RaidLogger:StartRaid();
     end
 
     -- save zone
@@ -453,10 +447,320 @@ function RaidLogger_UpdateRaid()
     for i = 1, raidSize do
         local name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML = GetRaidRosterInfo(i)
         if name then
-            RaidLogger_LogAttended(name)
+            RaidLogger:LogAttended(name)
             RaidLoggerStore.players[name] = class
         end
     end
 
     -- out("Attendance updated.")
 end
+
+function RaidLogger:ChooseLastRaid()
+    editRaid = RaidLoggerStore.activeRaid or RaidLoggerStore.raids[#RaidLoggerStore.raids]
+end
+
+
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--   ADDON FRAME 
+
+function RaidLoggerFrame:OnAddonLoaded()
+    SLASH_RaidLogger1 = "/rl"
+    SlashCmdList["RaidLogger"] = RaidLogger_Commands
+    out("Logs raid attendance into a file. Write |cFF00FF00/rl help|r for a list of commands.")
+
+    RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_LootTab)
+    RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_ParticipantsTab)
+end
+
+function RaidLoggerFrame:OnUpdate()
+    if RaidLoggerStore and RaidLoggerStore.activeRaid and time() - lastBuffCheck >= BUFF_CHECK_SECONDS then 
+        -- out("checking buffs...")
+        if not RaidLoggerStore.activeRaid.buffs then RaidLoggerStore.activeRaid.buffs = {} end 
+        lastBuffCheck = time() 
+        RaidLogger_CheckBuffs(RaidLoggerStore.activeRaid.buffs)
+    end 
+end 
+
+function RaidLoggerFrame:OnEvent(event, arg1)
+    if event == "ADDON_LOADED" then
+        if arg1 == ADDON_NAME then 
+            self:OnAddonLoaded()
+            -- saved variables loaded
+            if Store and Store.raids and #Store.raids > 0 and (not RaidLoggerStore or not RaidLoggerStore.raids or #RaidLoggerStore.raids == 0) then 
+                RaidLoggerStore = Store 
+                Store = nil 
+            end 
+            if RaidLoggerStore and RaidLoggerStore.activeRaid then
+                LoggingCombat(true) -- resume combat logging
+                EndRaidReminder()
+            end
+            RaidLogger:ChooseLastRaid()
+            RaidLogger_RaidWindow:Refresh()
+        end 
+    else
+        -- out("|c44FFFFFF"..event.." event")
+        if event == "RAID_INSTANCE_WELCOME" or event == "ZONE_CHANGED_NEW_AREA" then
+            if InTrackedInstance() and GetNumRaidMembers() >= MIN_RAID_PLAYERS then
+                RaidLogger:UpdateRaid()
+            end
+        elseif event == "CHAT_MSG_LOOT" then
+            local zone = InTrackedInstance()
+            if zone and RaidLoggerStore.activeRaid then
+                RaidLogger:ParseLootMessage(arg1, zone)
+            end
+        elseif event == "RAID_ROSTER_UPDATE" or event == "GROUP_ROSTER_UPDATE" or event == "ENCOUNTER_END" then
+            if RaidLoggerStore and RaidLoggerStore.activeRaid then
+                if GetNumRaidMembers() > 1 then
+                    RaidLogger:UpdateRaid()
+                else
+                    EndRaidReminder();
+                end
+            end
+        end
+    end
+end
+
+
+
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--   CURRENT RAID WINDOW
+
+function RaidLogger:SetTabBackdropColor(btn, hovering)
+	if btn.disabled then 
+		btn:SetBackdropColor(0.3, 0.3, 0.3, 0.1)
+		-- btn:SetBackdropBorderColor(1, 1, 1, 0.08)
+		btn.label:SetTextColor(0.8, 0.8, 0.8, 0.5)
+	elseif hovering then 
+		if btn.selected then 
+			btn:SetBackdropColor(0, 0, 0, 1)
+            btn:SetBackdropBorderColor(0, 0, 0, 1)
+			btn.label:SetTextColor(1, 1, 1, 1)
+		else 
+			btn:SetBackdropColor(1, 1, 1, 0.1)
+            btn:SetBackdropBorderColor(0.1, 0.1, 0.1, 1)
+			btn.label:SetTextColor(255/255, 238/255, 200/255, 1)
+		end 
+	else 
+		if btn.selected then 
+			btn:SetBackdropColor(0, 0, 0, 1)
+            btn:SetBackdropBorderColor(0, 0, 0, 1)
+			btn.label:SetTextColor(1, 1, 1, 1)
+		else 
+			btn:SetBackdropColor(0.7, 0.7, 0.7, 0.1)
+            btn:SetBackdropBorderColor(0.1, 0.1, 0.1, 1)
+			btn.label:SetTextColor(0.8, 0.8, 0.8, 1)
+		end 
+	end 
+end 
+
+function RaidLogger_RaidWindow_Buttons_ParticipantsTab:Clicked(clickedButton)
+	if self.disabled then return end 
+    self.selected = true
+    RaidLogger_RaidWindow_Buttons_LootTab.selected = false 
+    RaidLogger:SetTabBackdropColor(self, true)
+    RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_LootTab, false)
+end 
+
+function RaidLogger_RaidWindow_Buttons_LootTab:Clicked(clickedButton)
+	if self.disabled then return end 
+    self.selected = true
+    RaidLogger_RaidWindow_Buttons_ParticipantsTab.selected = false 
+    RaidLogger:SetTabBackdropColor(self, true)
+    RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_ParticipantsTab, false)
+end 
+
+local function HideRowsBeyond(j, container)
+	local n = #container.rows;
+	if j <= n then 
+		for i = j, n do
+			container.rows[i].root:Hide()
+		end
+	end 
+end
+
+function RaidLogger_RaidWindow:AddRow(players, entry, activeRaid) 
+	self.visibleRows = self.visibleRows + 1
+
+    local existingRow = self.rows[self.visibleRows]
+	local row = existingRow or {};
+
+	if not row.root then 
+		row.root = CreateFrame("FRAME", nil, self.scrollContent);		
+		-- row.root:SetWidth(self.scrollContent:GetWidth() - 20);
+        row.root:SetHeight(24);
+        row.root:SetBackdrop({bgFile = "Interface/Tooltips/UI-Tooltip-Background"})
+        row.root:SetBackdropColor(1, 1, 1, 0.1)
+		if #self.rows == 0 then 
+			row.root:SetPoint("TOPLEFT", self.scrollContent);
+			row.root:SetPoint("RIGHT", self.scroll, 0, 0);
+		else 
+			row.root:SetPoint("TOPLEFT", self.rows[#self.rows].root, "BOTTOMLEFT", 0, -2);
+			row.root:SetPoint("TOPRIGHT", self.rows[#self.rows].root, "BOTTOMRIGHT", 0, -2);
+		end 
+	end     
+    row.root:Show();
+
+    if not row.statusImage then 
+        row.statusFrame = CreateFrame("FRAME", nil, row.root);
+        row.statusFrame:SetSize(16, 16)
+        row.statusFrame:SetPoint("LEFT", 40, 0)  
+        row.statusFrame:SetScript("OnLeave", function(self)
+            GameTooltip_Hide();
+        end);	
+        row.statusImage = row.root:CreateTexture();
+        row.statusImage:SetAllPoints(row.statusFrame)
+    end 
+    if activeRaid then 
+        local statusImage = "question"
+        local statusTooltip = "Undecided"
+        if entry.status == 1 then 
+            statusImage = "check"
+            statusTooltip = "Approved"
+        elseif entry.status == -1 then 
+            statusImage = "cross"
+            statusTooltip = "Denied"
+        end 
+        row.statusImage:SetTexture("Interface\\AddOns\\RaidLogger\\assets\\"..statusImage)
+        row.statusFrame:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(row.statusFrame, "ANCHOR_LEFT")
+            GameTooltip:SetText(statusTooltip)
+            GameTooltip:Show()
+        end);
+    else 
+        row.statusImage:SetTexture(nil)
+        row.statusFrame:SetScript("OnEnter", nil)
+    end 
+    
+    if not row.timeLabel then 
+		row.timeLabel = row.root:CreateFontString(nil, "ARTWORK", "ChatFontNormal")
+		row.timeLabel:SetTextColor(0.8, 0.8, 0.8, 1)
+		row.timeLabel:SetPoint("RIGHT", row.statusFrame, "LEFT", -6, 0)
+		row.timeLabel:SetFont(FONT_NAME, 10)
+	end 
+	row.timeLabel:SetText(date("%H:%M", entry.ts));
+
+    if not row.playerDropdown then 
+        local function Dropdown_OnClick(self)
+            entry.tradedTo = self.value 
+            entry.votes = {}
+            entry.status = 0
+            entry.de = 0
+            entry.os = 0
+            UIDropDownMenu_SetText(row.playerDropdown, self.value)
+        end
+        row.playerDropdown = CreateFrame("Frame", "RaidLogger_RaidWindow_PlayerDropdown"..(self.visibleRows), row.root, "UIDropDownMenuTemplate")
+        row.playerDropdown:SetPoint("LEFT", row.statusImage, "RIGHT", -10, -2)
+        UIDropDownMenu_SetWidth(row.playerDropdown, 100) 
+        UIDropDownMenu_JustifyText(row.playerDropdown, "LEFT")
+        UIDropDownMenu_Initialize(row.playerDropdown, function (frame, level, menuList)
+            local info = UIDropDownMenu_CreateInfo()
+            info.func = Dropdown_OnClick
+            for _, name in ipairs(players) do 
+                info.text, info.checked = name, name == (entry.tradedTo or entry.player)
+                UIDropDownMenu_AddButton(info)
+            end 
+        end)
+        row.playerDropdown:Show()    
+    end 
+    UIDropDownMenu_SetText(row.playerDropdown, entry.tradedTo or entry.player)
+
+	if not row.label then 
+		row.labelFrame = CreateFrame("FRAME", nil, row.root);		
+        -- row.labelFrame:SetPoint("RIGHT", row.root, "RIGHT", -10, 0)
+		row.label = row.labelFrame:CreateFontString(nil, "ARTWORK", "ChatFontNormal")
+		row.label:SetTextColor(0.8, 0.8, 0.8, 1)
+		row.label:SetPoint("TOPLEFT", row.playerDropdown, "TOPRIGHT", -7, 0)
+        row.label:SetPoint("BOTTOMLEFT", row.playerDropdown, "BOTTOMRIGHT", -7, 3)
+        row.label:SetJustifyV("MIDDLE");
+		row.label:SetFont(FONT_NAME, 10)
+
+        row.labelFrame:SetPoint("TOPLEFT", row.label)
+        row.labelFrame:SetPoint("BOTTOMLEFT", row.label)
+        row.labelFrame:SetPoint("RIGHT", row.label)
+	end 
+    row.label:SetText(entry.link);
+    
+    if not row.yesButton then 
+        row.yesButton = CreateFrame("BUTTON", nil, row.root);
+        row.yesButton:SetSize(16, 16)
+        row.yesButton:SetPoint("RIGHT", -8, 0)
+        row.yesButton:RegisterForClicks("AnyUp")
+        row.yesButton:SetNormalTexture("Interface\\AddOns\\RaidLogger\\assets\\agree")
+        row.yesButton:SetPushedTexture("Interface\\AddOns\\RaidLogger\\assets\\agree")
+        row.yesButton:SetHighlightTexture("Interface\\AddOns\\RaidLogger\\assets\\agree")
+        row.yesButton:SetScript("OnClick", function(self) out("yes") end)
+    end 
+
+    if not row.noButton then 
+        row.noButton = CreateFrame("BUTTON", nil, row.root);
+        row.noButton:SetSize(16, 16)
+        row.noButton:SetPoint("RIGHT", row.yesButton, "LEFT", -8, 0)
+        row.noButton:RegisterForClicks("AnyUp")
+        row.noButton:SetNormalTexture("Interface\\AddOns\\RaidLogger\\assets\\disagree")
+        row.noButton:SetPushedTexture("Interface\\AddOns\\RaidLogger\\assets\\disagree")
+        row.noButton:SetHighlightTexture("Interface\\AddOns\\RaidLogger\\assets\\disagree")
+        row.noButton:SetScript("OnClick", function(self) out("no") end)
+	end 
+
+    if activeRaid then 
+        row.yesButton:Show()
+        row.noButton:Show()
+    else 
+        row.yesButton:Hide()
+        row.noButton:Hide()
+    end 
+
+    row.labelFrame:SetScript("OnEnter", function(self)
+		-- self:SetBackdropColor(0.8, 0.8, 0.8, 0.6)
+        GameTooltip:SetOwner(row.label, "ANCHOR_RIGHT")
+        GameTooltip:SetHyperlink(entry.link)
+        GameTooltip:Show()
+	end);
+    
+    row.labelFrame:SetScript("OnLeave", function(self)
+        GameTooltip_Hide();
+        -- row.root:SetBackdropColor(1, 1, 1, 0.2)
+    end);	
+
+    row.root:SetScript("OnMouseUp", function(self, ...)
+		if IsShiftKeyDown() then
+			PlaceLinkInChatEditBox(entry.link) -- paste in chat box
+		elseif IsControlKeyDown() then
+			DressUpItemLink(entry.link) -- preview
+		end
+    end);
+    
+	if not existingRow then 
+		tinsert(self.rows, row);
+	end 
+
+	return row
+end 
+
+function RaidLogger_RaidWindow:Refresh()
+    self.visibleRows = 0
+    
+    if editRaid then 
+        local title = editRaid.zone.." / "..editRaid.date
+        if not editRaid.endTime then 
+            title = title.." (active)"
+        end
+        RaidLogger_RaidWindow_Title_Text:SetText(title)
+
+        local players = {}
+        for name, attStatus in pairs(editRaid.players) do 
+            if attStatus == "a" then tinsert(players, name) end 
+        end 
+        table.sort(players)
+
+        for i = #editRaid.loot, 1, -1 do
+            local entry = editRaid.loot[i]
+            if entry.quality >= 4 or (entry.quality == 3 and (string.find(entry.item, "Recipe: ") == 1 or string.find(entry.item, "Formula: ") == 1 or string.find(entry.item, "Schematic: ") == 1)) then 
+                RaidLogger_RaidWindow:AddRow(players, entry)
+            end 
+        end
+    end
+
+    HideRowsBeyond(self.visibleRows + 1, self)
+end
+

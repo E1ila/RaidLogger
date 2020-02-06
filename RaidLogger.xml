@@ -1,10 +1,317 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://www.blizzard.com/wow/ui/..\..\FrameXML\UI.xsd">
-    <Script File="RaidLogger.lua"/>
+<Ui xmlns="http://www.blizzard.com/wow/ui/" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/..\..\FrameXML\UI.xsd">
+
+    <FontFamily name="RaidLoggerFont" virtual="true">
+        <Member alphabet="roman">
+            <Font font="Fonts\FRIZQT__.TTF" height="10"/>
+        </Member>
+        <Member alphabet="korean">
+            <Font font="Fonts\2002.TTF" height="12" spacing="1"/>
+        </Member>
+        <Member alphabet="simplifiedchinese">
+            <Font font="Fonts\ARKai_T.ttf" height="12"/>
+        </Member>
+        <Member alphabet="traditionalchinese">
+            <Font font="Fonts\bKAI00M.TTF" height="12"/>
+        </Member>
+        <Member alphabet="russian">
+            <Font font="Fonts\FRIZQT___CYR.TTF" height="10"/>
+        </Member>
+    </FontFamily>
+
+    <FontFamily name="RaidLoggerSmallFont" virtual="true">
+        <Member alphabet="roman">
+            <Font font="Fonts\FRIZQT__.TTF" height="9"/>
+        </Member>
+        <Member alphabet="korean">
+            <Font font="Fonts\2002.TTF" height="10" spacing="1"/>
+        </Member>
+        <Member alphabet="simplifiedchinese">
+            <Font font="Fonts\ARKai_T.ttf" height="10"/>
+        </Member>
+        <Member alphabet="traditionalchinese">
+            <Font font="Fonts\bKAI00M.TTF" height="10"/>
+        </Member>
+        <Member alphabet="russian">
+            <Font font="Fonts\FRIZQT___CYR.TTF" height="9"/>
+        </Member>
+    </FontFamily>
+
     <Frame name="RaidLoggerFrame">
         <Scripts>
-            <OnLoad>RaidLogger_OnLoad(self)</OnLoad>
+            <OnLoad>
+                self:RegisterEvent("ADDON_LOADED");
+                self:RegisterEvent("RAID_ROSTER_UPDATE");
+                self:RegisterEvent("GROUP_ROSTER_UPDATE");
+                self:RegisterEvent("ENCOUNTER_END");
+                self:RegisterEvent("RAID_INSTANCE_WELCOME");
+                self:RegisterEvent("ZONE_CHANGED_NEW_AREA");
+                self:RegisterEvent("CHAT_MSG_LOOT");
+            </OnLoad>
+            <OnEvent>
+                self:OnEvent(event, ...)
+            </OnEvent>
+            <OnUpdate>
+                self:OnUpdate()
+            </OnUpdate>
         </Scripts>
     </Frame>
+
+    <Frame name="RaidLogger_RaidWindow" parent="UIParent" frameStrata="HIGH" enableMouse="true" movable="true" resizable="true">
+        <Size x="200" y="200" />
+        <Anchors>
+            <Anchor point="CENTER" />
+        </Anchors>
+        <ResizeBounds>
+            <minResize x="300" y="200" />
+            <maxResize x="600" y="800" />
+        </ResizeBounds>
+        <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
+            <EdgeSize>
+                <AbsValue val="1"></AbsValue>
+            </EdgeSize>
+            <TileSize>
+                <AbsValue val="16" />
+            </TileSize>
+        </Backdrop>
+        <Scripts>
+            <OnLoad>
+   			    self:SetBackdropColor (0, 0, 0, 1)
+    		    self:SetBackdropBorderColor(0, 0, 0, 1)
+                self.rows = {}
+            </OnLoad>
+        </Scripts>
+
+        <Frames>
+
+            <Button name="$parent_CloseButton" inherits="UIPanelCloseButton">
+                <Size x="26" y="26" />
+                <Anchors>
+                    <Anchor point="TOPRIGHT">
+                        <Offset x="1" y="1" />
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        RaidLogger_RaidWindow:Hide()
+                    </OnClick>
+                </Scripts>
+            </Button>            <!--$parent_CloseButton-->
+
+            <Frame name="$parent_Title" enableMouse="true" movable="true" resizable="true">
+                <Size x="120" y="20" />
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="$parent" relativePoint="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="2" y="-2"/>
+                        </Offset>
+                    </Anchor>
+                    <Anchor point="TOPRIGHT" relativeTo="$parent" relativePoint="TOPRIGHT">
+                        <Offset>
+                            <AbsDimension x="-2" y="-2"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
+                    <EdgeSize>
+                        <AbsValue val="1"></AbsValue>
+                    </EdgeSize>
+                    <TileSize>
+                        <AbsValue val="16" />
+                    </TileSize>
+                </Backdrop>
+                <Scripts>
+                    <OnLoad>
+       			        self:SetBackdropColor(0.5, 0.5, 0.5, 0.3)
+        	        	self:SetBackdropBorderColor(0, 0, 0, 0)
+                        self:RegisterForDrag("LeftButton")
+                    </OnLoad>
+                    <OnDragStart>
+                        RaidLogger_RaidWindow:StartMoving()
+                    </OnDragStart>
+                    <OnDragStop>
+          	            RaidLogger_RaidWindow:StopMovingOrSizing();
+                    </OnDragStop>
+                </Scripts>
+                <Layers>
+                    <Layer level="BACKGROUND">
+                        <FontString name="$parent_Text" inherits="ChatFontNormal" font="RaidLoggerFont" text="Active Raid">
+                            <Color r="0.3" g="0.7" b="1"/>
+                            <Anchors>
+                                <Anchor point="CENTER" />
+                            </Anchors>
+                        </FontString>
+                    </Layer>
+                </Layers>
+            </Frame>            <!--$parent_Title-->
+
+            <Frame name="$parent_Buttons" enableMouse="true" movable="true" resizable="true">
+                <Size y="26" />
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="$parent_Title" relativePoint="BOTTOMLEFT">
+                        <Offset x="0" y="-2" />
+                    </Anchor>
+                    <Anchor point="TOPRIGHT" relativeTo="$parent_Title" relativePoint="BOTTOMRIGHT">
+                        <Offset x="0" y="-2" />
+                    </Anchor>
+                </Anchors>
+                <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
+                    <EdgeSize>
+                        <AbsValue val="1" />
+                    </EdgeSize>
+                    <TileSize>
+                        <AbsValue val="16" />
+                    </TileSize>
+                </Backdrop>
+                <Scripts>
+                    <OnLoad>
+                        self:SetBackdropColor(0.5, 0.5, 0.5, 0.2)
+        		        self:SetBackdropBorderColor(0, 0, 0, 0)
+                    </OnLoad>
+                </Scripts>
+                <Frames>
+                    <Button name="$parent_LootTab">
+                        <Size>
+                            <AbsDimension x="70" y="22"/>
+                        </Size>
+                        <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
+                            <EdgeSize>
+                                <AbsValue val="1"></AbsValue>
+                            </EdgeSize>
+                            <TileSize>
+                                <AbsValue val="16" />
+                            </TileSize>
+                        </Backdrop>
+                        <Anchors>
+                            <Anchor point="BOTTOMLEFT" x="8" y="0" />
+                        </Anchors>
+                        <Layers>
+                            <Layer level="ARTWORK">
+                                <FontString name="$parent_Text" inherits="ChatFontNormal" font="RaidLoggerSmallFont" text="Loot">
+                                    <Color r="1" g="1" b="1"/>
+                                    <Anchors>
+                                        <Anchor point="CENTER" />
+                                    </Anchors>
+                                </FontString>
+                            </Layer>
+                        </Layers>
+                        <Scripts>
+                            <OnLoad>
+            				    self:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+                                self.label = RaidLogger_RaidWindow_Buttons_LootTab_Text
+                                self.selected = true 
+                            </OnLoad>
+                            <OnEnter>
+                                RaidLogger:SetTabBackdropColor(self, true)
+                            </OnEnter>
+                            <OnLeave>
+                                RaidLogger:SetTabBackdropColor(self, false)
+                            </OnLeave>
+                            <OnClick>
+                                self:Clicked(button)
+                            </OnClick>
+                        </Scripts>
+                    </Button>                    <!--$parent_LootTab-->
+
+                    <Button name="$parent_ParticipantsTab">
+                        <Size>
+                            <AbsDimension x="70" y="22"/>
+                        </Size>
+                        <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
+                            <EdgeSize>
+                                <AbsValue val="1"></AbsValue>
+                            </EdgeSize>
+                            <TileSize>
+                                <AbsValue val="16" />
+                            </TileSize>
+                        </Backdrop>
+                        <Anchors>
+                            <Anchor point="BOTTOMLEFT" relativeTo="$parent_LootTab" relativePoint="BOTTOMRIGHT" x="8" y="0" />
+                        </Anchors>
+                        <Layers>
+                            <Layer level="ARTWORK">
+                                <FontString name="$parent_Text" inherits="ChatFontNormal" font="RaidLoggerSmallFont" text="Participants">
+                                    <Color r="1" g="1" b="1"/>
+                                    <Anchors>
+                                        <Anchor point="CENTER" />
+                                    </Anchors>
+                                </FontString>
+                            </Layer>
+                        </Layers>
+                        <Scripts>
+                            <OnLoad>
+            				    self:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+                                self.label = RaidLogger_RaidWindow_Buttons_ParticipantsTab_Text
+                            </OnLoad>
+                            <OnEnter>
+                                RaidLogger:SetTabBackdropColor(self, true)
+                            </OnEnter>
+                            <OnLeave>
+                                RaidLogger:SetTabBackdropColor(self, false)
+                            </OnLeave>
+                            <OnClick>
+                                self:Clicked(button)
+                            </OnClick>
+                        </Scripts>
+                    </Button>                    <!--$parent_ParticipantsTab-->
+
+                </Frames>
+            </Frame>            <!--$parent_Buttons-->
+
+            <Button name="$parent_Resize">
+                <Size x="16" y="16" />
+                <Anchors>
+                    <Anchor point="BOTTOMLEFT">
+                        <Offset x="-2" y="-2" />
+                    </Anchor>
+                </Anchors>
+                <NormalTexture file="Interface\AddOns\RaidLogger\assets\FarmLogResizeButton" />
+                <HighlightTexture file="Interface\AddOns\RaidLogger\assets\FarmLogResizeButton" />
+                <Scripts>
+                    <OnMouseDown>
+                        RaidLogger_RaidWindow:StartSizing("BOTTOMLEFT")
+                    </OnMouseDown>
+                    <OnMouseUp>
+                        RaidLogger_RaidWindow:StopMovingOrSizing()
+                    </OnMouseUp>
+                </Scripts>
+            </Button>
+
+            <ScrollFrame name="$parent_Scroll" inherits="UIPanelScrollFrameTemplate" enableMouse="true">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="$parent_Buttons" relativePoint="BOTTOMLEFT">
+                        <Offset x="5" y="-3" />
+                    </Anchor>
+                    <Anchor point="BOTTOMRIGHT">
+                        <Offset x="-25" y="3" />
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnLoad>
+                        self:SetHorizontalScroll(0)
+                        self:SetVerticalScroll(0)
+                        RaidLogger_RaidWindow.scroll = self
+                    </OnLoad>
+                </Scripts>
+                <ScrollChild>
+                    <Frame name="$parent_Content">
+                        <Size x="10" y="10" />
+                        <Anchors>
+                            <Anchor point="TOPLEFT" />
+                            <Anchor point="BOTTOMRIGHT" />
+                        </Anchors>
+                        <Scripts>
+                            <OnLoad>
+                                RaidLogger_RaidWindow.scrollContent = self
+                            </OnLoad>
+                        </Scripts>
+                    </Frame>
+                </ScrollChild>
+            </ScrollFrame>            <!--$parent_Scroll-->
+
+        </Frames>
+    </Frame>    <!--RaidLogger_RaidWindow-->
+
+    <Script File="RaidLogger.lua"/>
+
 </Ui>
