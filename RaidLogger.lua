@@ -200,6 +200,7 @@ local function LogLoot(who, loot, quantity, zone)
             quantity = quantity,
             de = 0,
             os = 0,
+            bank = 0,
             votes = {},
             status = 0,
         })
@@ -678,6 +679,18 @@ local function HideRowsBeyond(j, container)
 	end 
 end
 
+function setButtonState(state, prefix, btn)
+    local texture = "Interface\\AddOns\\RaidLogger\\assets\\"..prefix.."-"
+    if state == 1 then 
+        texture = texture .. "on"
+    else 
+        texture = texture .. "off"
+    end     
+    btn:SetNormalTexture(texture)
+    btn:SetPushedTexture(texture)
+    btn:SetHighlightTexture(texture)    
+end 
+
 function RaidLogger_RaidWindow:Refresh()
     RaidLogger_RaidWindow_LootTab:Refresh()
     RaidLogger_RaidWindow_PlayersTab:Refresh()
@@ -795,13 +808,45 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
     row.playerDropdown:SetPoint("LEFT", row.statusImage, "RIGHT", playerDropdownOffX, -2)
     UIDropDownMenu_SetText(row.playerDropdown, entry.tradedTo or entry.player)
 
+    if not row.deButton then 
+        row.deButton = CreateFrame("BUTTON", nil, row.root);
+        row.deButton:SetSize(16, 16)
+        row.deButton:SetPoint("LEFT", row.playerDropdown, "RIGHT", -8, 3)
+        row.deButton:RegisterForClicks("AnyUp")
+    end 
+    setButtonState(entry.de, "de", row.deButton)
+    row.deButton:SetScript("OnClick", function(self) 
+        entry.de = 1 - entry.de 
+        setButtonState(entry.de, "de", self)
+        if entry.bank == 1 and entry.de == 1 then
+            entry.bank = 0
+            setButtonState(entry.bank, "bank", row.bankButton)
+        end 
+    end)
+
+    if not row.bankButton then 
+        row.bankButton = CreateFrame("BUTTON", nil, row.root);
+        row.bankButton:SetSize(16, 16)
+        row.bankButton:SetPoint("LEFT", row.deButton, "RIGHT", 7, -1)
+        row.bankButton:RegisterForClicks("AnyUp")
+    end 
+    setButtonState(entry.bank, "bank", row.bankButton)
+    row.bankButton:SetScript("OnClick", function(self) 
+        entry.bank = 1 - (entry.bank or 0)
+        setButtonState(entry.bank, "bank", self)
+        if entry.de == 1 and entry.bank == 1 then
+            entry.de = 0
+            setButtonState(entry.de, "de", row.deButton)
+        end 
+    end)
+
 	if not row.label then 
 		row.labelFrame = CreateFrame("FRAME", nil, row.root);		
         -- row.labelFrame:SetPoint("RIGHT", row.root, "RIGHT", -10, 0)
 		row.label = row.labelFrame:CreateFontString(nil, "ARTWORK", "ChatFontNormal")
 		row.label:SetTextColor(0.8, 0.8, 0.8, 1)
-		row.label:SetPoint("TOPLEFT", row.playerDropdown, "TOPRIGHT", -7, 0)
-        row.label:SetPoint("BOTTOMLEFT", row.playerDropdown, "BOTTOMRIGHT", -7, 3)
+		row.label:SetPoint("TOPLEFT", row.bankButton, "TOPRIGHT", 8, -1)
+        row.label:SetPoint("BOTTOMLEFT", row.bankButton, "BOTTOMRIGHT", 8, -1)
         row.label:SetJustifyV("MIDDLE");
 		row.label:SetFont(FONT_NAME, 10)
 
@@ -954,13 +999,13 @@ function RaidLogger_RaidWindow_PlayersTab:AddRow(player, status)
         row.deleteButton:SetNormalTexture("Interface\\AddOns\\RaidLogger\\assets\\delete")
         row.deleteButton:SetPushedTexture("Interface\\AddOns\\RaidLogger\\assets\\delete")
         row.deleteButton:SetHighlightTexture("Interface\\AddOns\\RaidLogger\\assets\\delete")
-        row.deleteButton:SetScript("OnClick", function() 
-            RaidLogger:AskQuestion("Remove Player", "Do you want to remove "..player.."\nfrom attendance list?", function()  
-                editRaid.players[player] = nil 
-                self:Refresh()
-            end, nil, "Remove", "Cancel") 
-        end)
     end 
+    row.deleteButton:SetScript("OnClick", function() 
+        RaidLogger:AskQuestion("Remove Player", "Do you want to remove "..player.."\nfrom attendance list?", function()  
+            editRaid.players[player] = nil 
+            self:Refresh()
+        end, nil, "Remove", "Cancel") 
+    end)
 
     if not row.label then 
 		row.label = row.root:CreateFontString(nil, "ARTWORK", "ChatFontNormal")
@@ -1049,23 +1094,23 @@ function RaidLogger_RaidWindow_RaidsTab:AddRow(raid, raidIndex)
         row.deleteButton:SetNormalTexture("Interface\\AddOns\\RaidLogger\\assets\\delete")
         row.deleteButton:SetPushedTexture("Interface\\AddOns\\RaidLogger\\assets\\delete")
         row.deleteButton:SetHighlightTexture("Interface\\AddOns\\RaidLogger\\assets\\delete")
-        row.deleteButton:SetScript("OnClick", function() 
-            local question = "Do you want to delete this raid?"
-            if not editRaid.endTime then 
-                question = "Do you want to discard active raid?"
-            end 
-            RaidLogger:AskQuestion("Delete Raid", question, function()  
-                if not editRaid.endTime then 
-                    out("Raid has been discarded.")
-                    RaidLoggerStore.activeRaid = nil
-                else
-                    table.remove(RaidLoggerStore.raids, editRaidIndex)
-                end 
-                RaidLogger:ChooseLastRaid()
-                RaidLogger_RaidWindow:Refresh()
-            end, nil, "Remove", "Cancel") 
-        end)
     end 
+    row.deleteButton:SetScript("OnClick", function() 
+        local question = "Do you want to delete this raid?"
+        if not editRaid.endTime then 
+            question = "Do you want to discard active raid?"
+        end 
+        RaidLogger:AskQuestion("Delete Raid", question, function()  
+            if not editRaid.endTime then 
+                out("Raid has been discarded.")
+                RaidLoggerStore.activeRaid = nil
+            else
+                table.remove(RaidLoggerStore.raids, editRaidIndex)
+            end 
+            RaidLogger:ChooseLastRaid()
+            RaidLogger_RaidWindow:Refresh()
+        end, nil, "Remove", "Cancel") 
+    end)
 
     if not row.dateLabel then 
 		row.dateLabel = row.root:CreateFontString(nil, "ARTWORK", "ChatFontNormal")
