@@ -402,6 +402,48 @@
                         </Scripts>
                     </Button>                    <!--$parent_PlayersTab-->
 
+                    <Button name="$parent_RaidsTab">
+                        <Size>
+                            <AbsDimension x="70" y="22"/>
+                        </Size>
+                        <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
+                            <EdgeSize>
+                                <AbsValue val="1"></AbsValue>
+                            </EdgeSize>
+                            <TileSize>
+                                <AbsValue val="16" />
+                            </TileSize>
+                        </Backdrop>
+                        <Anchors>
+                            <Anchor point="BOTTOMLEFT" relativeTo="$parent_PlayersTab" relativePoint="BOTTOMRIGHT" x="8" y="0" />
+                        </Anchors>
+                        <Layers>
+                            <Layer level="ARTWORK">
+                                <FontString name="$parent_Text" inherits="ChatFontNormal" font="RaidLoggerSmallFont" text="Raids">
+                                    <Color r="1" g="1" b="1"/>
+                                    <Anchors>
+                                        <Anchor point="CENTER" />
+                                    </Anchors>
+                                </FontString>
+                            </Layer>
+                        </Layers>
+                        <Scripts>
+                            <OnLoad>
+            				    self:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+                                self.label = RaidLogger_RaidWindow_Buttons_RaidsTab_Text
+                            </OnLoad>
+                            <OnEnter>
+                                RaidLogger:SetTabBackdropColor(self, true)
+                            </OnEnter>
+                            <OnLeave>
+                                RaidLogger:SetTabBackdropColor(self, false)
+                            </OnLeave>
+                            <OnClick>
+                                self:Clicked(button)
+                            </OnClick>
+                        </Scripts>
+                    </Button>                    <!--$parent_RaidsTab-->
+
                 </Frames>
             </Frame>            <!--$parent_Buttons-->
 
@@ -501,7 +543,7 @@
                         </Frames>
                     </Frame>
                 </ScrollChild>
-            </ScrollFrame>            <!--$parent_Scroll-->
+            </ScrollFrame>            <!--$parent_LootTab-->
 
             <ScrollFrame name="$parent_PlayersTab" inherits="UIPanelScrollFrameTemplate" enableMouse="true">
                 <Anchors>
@@ -580,7 +622,39 @@
                         </Frames>
                     </Frame>
                 </ScrollChild>
-            </ScrollFrame>            <!--$parent_Scroll-->
+            </ScrollFrame>            <!--$parent_PlayersTab-->
+
+            <ScrollFrame name="$parent_RaidsTab" inherits="UIPanelScrollFrameTemplate" enableMouse="true">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="$parent_Buttons" relativePoint="BOTTOMLEFT">
+                        <Offset x="5" y="-3" />
+                    </Anchor>
+                    <Anchor point="BOTTOMRIGHT">
+                        <Offset x="-25" y="3" />
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnLoad>
+                        self:SetHorizontalScroll(0)
+                        self:SetVerticalScroll(0)
+                        self.rows = {}
+                    </OnLoad>
+                </Scripts>
+                <ScrollChild>
+                    <Frame name="$parent_Content">
+                        <Size x="10" y="10" />
+                        <Anchors>
+                            <Anchor point="TOPLEFT" />
+                            <Anchor point="BOTTOMRIGHT" />
+                        </Anchors>
+                        <Scripts>
+                            <OnLoad>
+                                RaidLogger_RaidWindow_RaidsTab.scrollContent = self
+                            </OnLoad>
+                        </Scripts>
+                    </Frame>
+                </ScrollChild>
+            </ScrollFrame>            <!--$parent_RaidsTab-->
 
         </Frames>
     </Frame>    <!--RaidLogger_RaidWindow-->

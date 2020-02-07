@@ -6,7 +6,7 @@
 --
 
 local VERSION = 1.6
-local MIN_RAID_PLAYERS = 10
+local MIN_RAID_PLAYERS = 2
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
 
@@ -18,7 +18,7 @@ local TRACKED_INSTANCES = {
     [5] = "Ahn'Qiraj",
     [6] = "Ruins of Ahn'Qiraj",
     [7] = "Naxxramas",
-    -- [8] = "Ragefire Chasm",
+    [8] = "Ragefire Chasm",
 }
 
 local CLASS_COLOR = {
@@ -56,6 +56,7 @@ local BUFF_CHECK_SECONDS = 60
 
 local lastBuffCheck = 0
 local editRaid = nil 
+local editRaidIndex = nil
 
 RaidLoggerStore = {
     raids = {},
@@ -203,6 +204,7 @@ local function LogLoot(who, loot, quantity, zone)
             status = 0,
         })
         RaidLoggerStore.activeRaid.lootCount = RaidLoggerStore.activeRaid.lootCount + 1
+        RaidLogger_RaidWindow_LootTab:Refresh()
     end
 end
 
@@ -236,8 +238,7 @@ function RaidLogger_Commands(msg)
     -- out("cmd " .. cmd .. " / arg1 " .. arg1)
     if not cmd then
         RaidLogger:ChooseLastRaid()
-        RaidLogger_RaidWindow_LootTab:Refresh()
-        RaidLogger_RaidWindow_PlayersTab:Refresh()
+        RaidLogger_RaidWindow:Refresh()
         RaidLogger_RaidWindow:Show()
     elseif  "S" == cmd or "START" == cmd then
         RaidLogger:UpdateRaid()
@@ -246,12 +247,35 @@ function RaidLogger_Commands(msg)
         out("  |cFF00FF00/rl|r - show UI")
         out("  |cFF00FF00/rl |cFF00ff95a|cFF00FF00dd <player>|r - manually log an attended player.")
         out("  |cFF00FF00/rl |cFF00ff95b|cFF00FF00ench <player>|r - log a benched player.")
+        out("  |cFF00FF00/rl log <itemlink> <receiver>|r - manually add looted item.")
         out("  |cFF00FF00/rl de|r - marks last distributed loot item as disenchanted.")
         out("  |cFF00FF00/rl os|r - marks last distributed loot as an off-spec item.")
         out("  |cFF00FF00/rl discard|r - discard current raid, do this to ignore current raid.")        
         out("  |cFF00FF00/rl end|r - save and close raid, do this when raid ended.")
         out("  |cFF00FF00/rl p|r - print active raid, if any.")
         out("  |cFF00FF00/rl |cFF00ff95start|r - start logging a raid or update existing one.")
+    elseif  "log" == cmd then
+        if not RaidLoggerStore.activeRaid then 
+            out("No active raid!")
+            return 
+        end 
+
+        local startIndex, _ = string.find(arg1, "%|c");
+        local _, endIndex = string.find(arg1, "%]%|h%|r");
+        local itemLink = string.sub(arg1, startIndex, endIndex);	
+
+        if itemLink and GetItemInfo(itemLink) then 
+            if ((endIndex + 2 ) <= (#arg1)) then
+                local player = string.sub(arg1, endIndex + 2, #arg1)
+                if player then 
+                    LogLoot(player, itemLink, 1, RaidLoggerStore.activeRaid.zone)
+                else 
+                    out("Incorrect usage of command, write |cff00ff00/rl log [ITEM_LINK] [RECEIVER_NAME]")
+                end 
+            end				
+        else 
+            out("Incorrect usage of command, write |cff00ff00/rl log [ITEM_LINK] [RECEIVER_NAME]")
+        end 
     elseif  "counsil" == cmd then
         if arg1 and string.len(arg1) > 0 then
             if arg1 == "disable" then
@@ -295,7 +319,7 @@ function RaidLogger_Commands(msg)
         end
     elseif  "ADD" == cmd or "A" == cmd then
         if arg1 and string.len(arg1) > 0 then
-            RaidLogger:LogAttend(FixPlayerName(arg1))
+            RaidLogger:LogAttended(FixPlayerName(arg1))
         else
             err("Missing player name!")
         end
@@ -344,6 +368,8 @@ function RaidLogger_Commands(msg)
         if RaidLoggerStore.activeRaid then
             out("Raid has been discarded.")
             RaidLoggerStore.activeRaid = nil
+            RaidLogger:ChooseLastRaid()
+            RaidLogger_RaidWindow:Refresh()
         else
             out("No active raid.")
         end
@@ -382,6 +408,9 @@ function RaidLogger:StartRaid()
         end 
     end 
     RaidLoggerStore.guildRoster = roster
+    RaidLogger:ChooseLastRaid()
+    RaidLogger_RaidWindow:Refresh()
+    RaidLogger_RaidWindow_Buttons_LootTab:Clicked()
 end
 
 function RaidLogger:EndRaid()
@@ -395,6 +424,8 @@ function RaidLogger:EndRaid()
     end
     RaidLoggerStore.activeRaid = nil
     LoggingCombat(false) -- stop combat logging
+    RaidLogger:ChooseLastRaid()
+    RaidLogger_RaidWindow:Refresh()
 end
 
 function RaidLogger:SetLootCouncil(player)
@@ -410,28 +441,33 @@ end
 function RaidLogger:LogBenched(player)
     out("Logging bench for " .. ColorName(player))
     RaidLoggerStore.activeRaid.players[player] = STATE_BENCHED
+    RaidLogger_RaidWindow_PlayersTab:Refresh()
 end
 
 function RaidLogger:LogAttended(player)
     if RaidLoggerStore.activeRaid.players[player] ~= STATE_ATTENDED then 
         out("Logging attendance for " .. ColorName(player))
         RaidLoggerStore.activeRaid.players[player] = STATE_ATTENDED
+        RaidLogger_RaidWindow_PlayersTab:Refresh()
     end 
 end
 
 function RaidLogger:LogNoShow(player)
     out("Logging no-show for " .. ColorName(player))
     RaidLoggerStore.activeRaid.players[player] = STATE_NOSHOW
+    RaidLogger_RaidWindow_PlayersTab:Refresh()
 end
 
 function RaidLogger:LogLateShow(player)
     out("Logging late show for " .. ColorName(player))
     RaidLoggerStore.activeRaid.players[player] = STATE_LATE
+    RaidLogger_RaidWindow_PlayersTab:Refresh()
 end
 
 function RaidLogger:RemoveFromLog(player)
     out("Removing " .. ColorName(player) .. " from log")
     RaidLoggerStore.activeRaid.players[player] = nil 
+    RaidLogger_RaidWindow_PlayersTab:Refresh()
 end
 
 function RaidLogger:UpdateRaid()
@@ -453,6 +489,7 @@ function RaidLogger:UpdateRaid()
         local zone = InTrackedInstance()
         if zone then
             RaidLoggerStore.activeRaid.zone = zone
+            RaidLogger_RaidWindow:Refresh()
             out("Zone: " .. COLOR_INSTANCE .. zone)
         else
             err("Zone " .. COLOR_INSTANCE .. GetZoneText() .. "|r couldn't be identified!")
@@ -472,8 +509,11 @@ function RaidLogger:UpdateRaid()
 end
 
 function RaidLogger:ChooseLastRaid()
-    -- editRaid = RaidLoggerStore.activeRaid or RaidLoggerStore.raids[#RaidLoggerStore.raids]
-    editRaid = RaidLoggerStore.activeRaid or RaidLoggerStore.raids[#RaidLoggerStore.raids-1]
+    editRaidIndex = nil 
+    if RaidLoggerStore.activeRaid then 
+        editRaidIndex = #RaidLoggerStore.raids
+    end 
+    editRaid = RaidLoggerStore.activeRaid or RaidLoggerStore.raids[#RaidLoggerStore.raids]
 end
 
 
@@ -487,6 +527,7 @@ function RaidLoggerFrame:OnAddonLoaded()
 
     RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_LootTab)
     RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_PlayersTab)
+    RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_RaidsTab)
 end
 
 function RaidLoggerFrame:OnUpdate()
@@ -512,7 +553,8 @@ function RaidLoggerFrame:OnEvent(event, arg1)
                 EndRaidReminder()
             end
             RaidLogger:ChooseLastRaid()
-            RaidLogger_RaidWindow:InitTabs()
+            RaidLogger_RaidWindow:Refresh();
+            RaidLogger_RaidWindow_Buttons_LootTab:Clicked()
         end 
     else
         -- out("|c44FFFFFF"..event.." event")
@@ -572,22 +614,37 @@ function RaidLogger:SetTabBackdropColor(btn, hovering)
 	end 
 end 
 
-function RaidLogger_RaidWindow_Buttons_PlayersTab:Clicked(clickedButton)
+function RaidLogger_RaidWindow_Buttons_PlayersTab:Clicked()
 	if self.disabled then return end 
     self.selected = true
     RaidLogger_RaidWindow_Buttons_LootTab.selected = false 
+    RaidLogger_RaidWindow_Buttons_RaidsTab.selected = false 
     RaidLogger:SetTabBackdropColor(self, true)
     RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_LootTab, false)
+    RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_RaidsTab, false)
     RaidLogger_RaidWindow:SwitchTabs("players")
 end 
 
-function RaidLogger_RaidWindow_Buttons_LootTab:Clicked(clickedButton)
+function RaidLogger_RaidWindow_Buttons_LootTab:Clicked()
 	if self.disabled then return end 
     self.selected = true
     RaidLogger_RaidWindow_Buttons_PlayersTab.selected = false 
+    RaidLogger_RaidWindow_Buttons_RaidsTab.selected = false 
     RaidLogger:SetTabBackdropColor(self, true)
     RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_PlayersTab, false)
+    RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_RaidsTab, false)
     RaidLogger_RaidWindow:SwitchTabs("loot")
+end 
+
+function RaidLogger_RaidWindow_Buttons_RaidsTab:Clicked()
+	if self.disabled then return end 
+    self.selected = true
+    RaidLogger_RaidWindow_Buttons_PlayersTab.selected = false 
+    RaidLogger_RaidWindow_Buttons_LootTab.selected = false 
+    RaidLogger:SetTabBackdropColor(self, true)
+    RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_PlayersTab, false)
+    RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_LootTab, false)
+    RaidLogger_RaidWindow:SwitchTabs("raids")
 end 
 
 
@@ -610,7 +667,7 @@ function RaidLogger:AskQuestion(titleText, questionText, onYes, onNo, yesText, n
 end 
 
 
--- rows ----------
+-- rows & tabs ----------
 
 local function HideRowsBeyond(j, container)
 	local n = #container.rows;
@@ -620,6 +677,31 @@ local function HideRowsBeyond(j, container)
 		end
 	end 
 end
+
+function RaidLogger_RaidWindow:Refresh()
+    RaidLogger_RaidWindow_LootTab:Refresh()
+    RaidLogger_RaidWindow_PlayersTab:Refresh()
+    RaidLogger_RaidWindow_RaidsTab:Refresh()
+end 
+
+function RaidLogger_RaidWindow:SwitchTabs(tab)
+    self.tab = tab
+    if self.tab == "loot" then 
+        RaidLogger_RaidWindow_LootTab:Show()
+    else 
+        RaidLogger_RaidWindow_LootTab:Hide()
+    end 
+    if self.tab == "players" then 
+        RaidLogger_RaidWindow_PlayersTab:Show()
+    else 
+        RaidLogger_RaidWindow_PlayersTab:Hide()
+    end 
+    if self.tab == "raids" then 
+        RaidLogger_RaidWindow_RaidsTab:Show()
+    else 
+        RaidLogger_RaidWindow_RaidsTab:Hide()
+    end 
+end 
 
 -- loot tab ----------
 
@@ -789,7 +871,7 @@ end
 function RaidLogger_RaidWindow_LootTab:Refresh()
     self.visibleRows = 0
     
-    if editRaid then 
+    if editRaid and editRaid.zone then 
         local title = editRaid.zone.." / "..editRaid.date
         if not editRaid.endTime then 
             title = title.." (active)"
@@ -807,7 +889,7 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
         for i = #editRaid.loot, 1, -1 do
             local entry = editRaid.loot[i]
             local blueRecipe = entry.quality == 3 and (string.find(entry.item, "Recipe: ") == 1 or string.find(entry.item, "Formula: ") == 1 or string.find(entry.item, "Schematic: ") == 1);
-            local epicItem = entry.quality >= 4
+            local epicItem = entry.quality >= 0
             local searchMatch = searchText == "" or string.find(string.lower(entry.item), searchText)
             if (epicItem or blueRecipe) and searchMatch then 
                 self:AddRow(players, entry)
@@ -820,26 +902,6 @@ end
 
 
 -- players tab ----------
-
-function RaidLogger_RaidWindow:InitTabs()
-    RaidLogger_RaidWindow_LootTab:Refresh()
-    RaidLogger_RaidWindow_PlayersTab:Refresh()
-    RaidLogger_RaidWindow:SwitchTabs("loot")
-end 
-
-function RaidLogger_RaidWindow:SwitchTabs(tab)
-    self.tab = tab
-    if self.tab == "loot" then 
-        RaidLogger_RaidWindow_LootTab:Show()
-    else 
-        RaidLogger_RaidWindow_LootTab:Hide()
-    end 
-    if self.tab == "players" then 
-        RaidLogger_RaidWindow_PlayersTab:Show()
-    else 
-        RaidLogger_RaidWindow_PlayersTab:Hide()
-    end 
-end 
 
 function RaidLogger_RaidWindow_PlayersTab:AddRow(player, status) 
 	self.visibleRows = self.visibleRows + 1
@@ -938,3 +1000,111 @@ function RaidLogger_RaidWindow_PlayersTab:Refresh()
     HideRowsBeyond(self.visibleRows + 1, self)
 end
 
+
+
+
+-- raids tab ----------
+
+function RaidLogger_RaidWindow_RaidsTab:AddRow(raid, raidIndex) 
+	self.visibleRows = self.visibleRows + 1
+
+    local existingRow = self.rows[self.visibleRows]
+	local row = existingRow or {};
+
+	if not row.root then 
+		row.root = CreateFrame("BUTTON", nil, self.scrollContent);		
+		-- row.root:SetWidth(self.scrollContent:GetWidth() - 20);
+        row.root:SetHeight(28);
+        row.root:SetBackdrop({bgFile = "Interface/Tooltips/UI-Tooltip-Background"})
+        row.root:SetBackdropColor(0, 0, 0, 0.3)
+        row.root:RegisterForClicks("AnyUp")
+        row.root:SetScript("OnEnter", function(self)
+            row.root:SetBackdropColor(0.5, 0.5, 0.5, 0.3)
+        end);
+        
+        row.root:SetScript("OnLeave", function(self)
+            row.root:SetBackdropColor(0, 0, 0, 0.3)
+        end);	
+		if #self.rows == 0 then 
+			row.root:SetPoint("TOPLEFT", self.scrollContent, 0, -25);
+			row.root:SetPoint("RIGHT", self, 0, 0);
+		else 
+			row.root:SetPoint("TOPLEFT", self.rows[#self.rows].root, "BOTTOMLEFT", 0, -2);
+			row.root:SetPoint("TOPRIGHT", self.rows[#self.rows].root, "BOTTOMRIGHT", 0, -2);
+		end 
+	end     
+    row.root:SetScript("OnClick", function() 
+        editRaid = raid 
+        editRaidIndex = raidIndex
+        RaidLogger_RaidWindow:Refresh()
+        RaidLogger_RaidWindow_Buttons_LootTab:Clicked()
+    end)
+    row.root:Show();
+        
+    if not row.deleteButton then 
+        row.deleteButton = CreateFrame("BUTTON", nil, row.root);
+        row.deleteButton:SetSize(16, 16)
+        row.deleteButton:SetPoint("LEFT", 7, 0)
+        row.deleteButton:RegisterForClicks("AnyUp")
+        row.deleteButton:SetNormalTexture("Interface\\AddOns\\RaidLogger\\assets\\delete")
+        row.deleteButton:SetPushedTexture("Interface\\AddOns\\RaidLogger\\assets\\delete")
+        row.deleteButton:SetHighlightTexture("Interface\\AddOns\\RaidLogger\\assets\\delete")
+        row.deleteButton:SetScript("OnClick", function() 
+            local question = "Do you want to delete this raid?"
+            if not editRaid.endTime then 
+                question = "Do you want to discard active raid?"
+            end 
+            RaidLogger:AskQuestion("Delete Raid", question, function()  
+                if not editRaid.endTime then 
+                    out("Raid has been discarded.")
+                    RaidLoggerStore.activeRaid = nil
+                else
+                    table.remove(RaidLoggerStore.raids, editRaidIndex)
+                end 
+                RaidLogger:ChooseLastRaid()
+                RaidLogger_RaidWindow:Refresh()
+            end, nil, "Remove", "Cancel") 
+        end)
+    end 
+
+    if not row.dateLabel then 
+		row.dateLabel = row.root:CreateFontString(nil, "ARTWORK", "ChatFontNormal")
+		row.dateLabel:SetPoint("LEFT", row.deleteButton, "RIGHT", 10, 0)
+        row.dateLabel:SetJustifyV("MIDDLE");
+		row.dateLabel:SetFont(FONT_NAME, 10)
+    end 
+    row.dateLabel:SetText(raid.date);
+
+    if not row.zoneLabel then 
+		row.zoneLabel = row.root:CreateFontString(nil, "ARTWORK", "ChatFontNormal")
+		row.zoneLabel:SetPoint("LEFT", row.deleteButton, "RIGHT", 100, 0)
+        row.zoneLabel:SetJustifyV("MIDDLE");
+		row.zoneLabel:SetFont(FONT_NAME, 10)
+    end 
+    local text = raid.zone or ""
+    if not raid.endTime then 
+        text = text .. " (active)"
+    end 
+    row.zoneLabel:SetText(text);
+
+	if not existingRow then 
+		tinsert(self.rows, row);
+	end 
+
+	return row
+end 
+
+function RaidLogger_RaidWindow_RaidsTab:Refresh()
+    self.visibleRows = 0
+
+    if RaidLoggerStore.activeRaid then 
+        self:AddRow(RaidLoggerStore.activeRaid)
+    end 
+    
+    for i = #RaidLoggerStore.raids, 1, -1 do
+        local raid = RaidLoggerStore.raids[i]
+        self:AddRow(raid, i)
+    end
+
+    HideRowsBeyond(self.visibleRows + 1, self)
+end
