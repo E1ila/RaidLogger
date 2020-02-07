@@ -127,7 +127,7 @@ end
 
 local function AttStatusFromString(text)
     if text == "Attended" then return STATE_ATTENDED end
-    if text == "Benched" then return STATE_NOSHOW end
+    if text == "Benched" then return STATE_BENCHED end
     if text == "Late" then return STATE_LATE end
     if text == "No Show" then return STATE_NOSHOW end
     return "??"
@@ -590,6 +590,26 @@ function RaidLogger_RaidWindow_Buttons_LootTab:Clicked(clickedButton)
     RaidLogger_RaidWindow:SwitchTabs("loot")
 end 
 
+
+-- Question dialog
+
+function RaidLogger:AskQuestion(titleText, questionText, onYes, onNo, yesText, noText) 
+	FarmLog_QuestionDialog_Yes:SetScript("OnClick", function () 
+		FarmLog_QuestionDialog:Hide()
+		onYes() 
+	end)
+	FarmLog_QuestionDialog_No:SetScript("OnClick", function () 
+		FarmLog_QuestionDialog:Hide()
+		if onNo then onNo() end 
+	end)
+	FarmLog_QuestionDialog_Title_Text:SetText(titleText)
+	FarmLog_QuestionDialog_Question:SetText(questionText)
+	FarmLog_QuestionDialog_Yes:SetText(yesText or L["Yes"])
+	FarmLog_QuestionDialog_No:SetText(noText or L["No"])
+	FarmLog_QuestionDialog:Show()
+end 
+
+
 -- rows ----------
 
 local function HideRowsBeyond(j, container)
@@ -845,10 +865,12 @@ function RaidLogger_RaidWindow_PlayersTab:AddRow(player, status)
 
     if not row.statusDropdown then 
         local function Dropdown_OnClick(self)
+            editRaid.players[player] = AttStatusFromString(self.value)
+            -- out("Setting attendance status of "..player.." to "..editRaid.players[player])
             UIDropDownMenu_SetText(row.statusDropdown, self.value)
         end
         row.statusDropdown = CreateFrame("Frame", "RaidLogger_RaidWindow_PlayersTab_StatusDropdown"..(self.visibleRows), row.root, "UIDropDownMenuTemplate")
-        row.statusDropdown:SetPoint("LEFT", row.root, "LEFT", -5, -2)
+        row.statusDropdown:SetPoint("LEFT", row.root, "LEFT", 13, -2)
         UIDropDownMenu_SetWidth(row.statusDropdown, 100) 
         UIDropDownMenu_JustifyText(row.statusDropdown, "LEFT")
         UIDropDownMenu_Initialize(row.statusDropdown, function (frame, level, menuList)
@@ -860,8 +882,24 @@ function RaidLogger_RaidWindow_PlayersTab:AddRow(player, status)
             UIDropDownMenu_AddButton(info)
         end)
     end 
-    UIDropDownMenu_SetText(row.statusDropdown, AttStatusToString(status))
-    
+    UIDropDownMenu_SetText(row.statusDropdown, AttStatusToString(status))    
+        
+    if not row.deleteButton then 
+        row.deleteButton = CreateFrame("BUTTON", nil, row.root);
+        row.deleteButton:SetSize(16, 16)
+        row.deleteButton:SetPoint("LEFT", 7, 0)
+        row.deleteButton:RegisterForClicks("AnyUp")
+        row.deleteButton:SetNormalTexture("Interface\\AddOns\\RaidLogger\\assets\\delete")
+        row.deleteButton:SetPushedTexture("Interface\\AddOns\\RaidLogger\\assets\\delete")
+        row.deleteButton:SetHighlightTexture("Interface\\AddOns\\RaidLogger\\assets\\delete")
+        row.deleteButton:SetScript("OnClick", function() 
+            RaidLogger:AskQuestion("Remove Player", "Do you want to remove "..player.."\nfrom attendance list?", function()  
+                editRaid.players[player] = nil 
+                self:Refresh()
+            end, nil, "Remove", "Cancel") 
+        end)
+    end 
+
     if not row.label then 
 		row.label = row.root:CreateFontString(nil, "ARTWORK", "ChatFontNormal")
 		row.label:SetPoint("LEFT", row.statusDropdown, "RIGHT", -4, 2)

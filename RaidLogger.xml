@@ -57,6 +57,154 @@
         </Scripts>
     </Frame>
 
+
+
+    <!-- Question Dialog -->
+
+    <Frame name="RaidLogger_QuestionDialog" frameStrata="DIALOG" parent="UIParent" enableMouse="true" movable="true">
+        <Size>
+            <AbsDimension x="250" y="100"/>
+        </Size>
+        <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
+            <EdgeSize>
+                <AbsValue val="1"></AbsValue>
+            </EdgeSize>
+            <TileSize>
+                <AbsValue val="16" />
+            </TileSize>
+        </Backdrop>
+        <Anchors>
+            <Anchor point="CENTER">
+                <Offset>
+                    <AbsDimension x="0" y="100"/>
+                </Offset>
+            </Anchor>
+        </Anchors>
+        <Scripts>
+            <OnLoad>
+                self:SetBackdropColor (0, 0, 0, 0.9)
+                self:SetBackdropBorderColor(0, 0, 0, 1)
+                self:RegisterForDrag("LeftButton")
+                self:SetUserPlaced(true)
+                tinsert(UISpecialFrames, self:GetName())
+            </OnLoad>
+            <OnDragStart>
+                self:StartMoving()
+            </OnDragStart>
+            <OnDragStop>
+                self:StopMovingOrSizing()
+            </OnDragStop>
+        </Scripts>
+        <Frames>
+
+            <Button name="$parent_CloseButton" inherits="UIPanelCloseButton">
+                <Size>
+                    <AbsDimension x="26" y="26"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPRIGHT">
+                        <Offset>
+                            <AbsDimension x="1" y="1"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        RaidLogger_QuestionDialog:Hide()
+                    </OnClick>
+                </Scripts>
+            </Button>            <!--$parent_CloseButton-->
+
+            <Frame name="$parent_Title">
+                <Size>
+                    <AbsDimension x="120" y="20"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="$parent" relativePoint="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="2" y="-2"/>
+                        </Offset>
+                    </Anchor>
+                    <Anchor point="TOPRIGHT" relativeTo="$parent" relativePoint="TOPRIGHT">
+                        <Offset>
+                            <AbsDimension x="-2" y="-2"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
+                    <EdgeSize>
+                        <AbsValue val="1"></AbsValue>
+                    </EdgeSize>
+                    <TileSize>
+                        <AbsValue val="16" />
+                    </TileSize>
+                </Backdrop>
+                <Scripts>
+                    <OnLoad>
+                        self:SetBackdropColor(0.5, 0.5, 0.5, 0.2)
+                        self:SetBackdropBorderColor(0, 0, 0, 1)
+                    </OnLoad>
+                </Scripts>
+                <Layers>
+                    <Layer level="BACKGROUND">
+                        <FontString name="$parent_Text" inherits="ChatFontNormal" font="RaidLoggerFont" text="Dialog Title">
+                            <Color r="0.3" g="0.7" b="1"/>
+                            <Anchors>
+                                <Anchor point="CENTER" />
+                            </Anchors>
+                        </FontString>
+                    </Layer>
+                </Layers>
+            </Frame>            <!--$parent_Title-->
+            <Button name="$parent_No" inherits="UIPanelButtonTemplate" text="No">
+                <Size>
+                    <AbsDimension x="70" y="20"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="BOTTOM">
+                        <Offset>
+                            <AbsDimension x="37" y="5"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        RaidLogger_QuestionDialog:Hide()
+                    </OnClick>
+                </Scripts>
+            </Button>            <!--$parent_No-->
+            <Button name="$parent_Yes" inherits="UIPanelButtonTemplate" text="Yes">
+                <Size>
+                    <AbsDimension x="70" y="20"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="BOTTOM">
+                        <Offset>
+                            <AbsDimension x="-37" y="5"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        RaidLogger_QuestionDialog:Hide()
+                    </OnClick>
+                </Scripts>
+            </Button>            <!--$parent_Yes-->
+        </Frames>
+        <Layers>
+            <Layer level="BACKGROUND">
+                <FontString name="$parent_Question" inherits="ChatFontNormal" font="RaidLoggerFont" text="Question?">
+                    <Color r="1" g="1" b="1"/>
+                    <Anchors>
+                        <Anchor point="CENTER" />
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+    </Frame>    <!--RaidLogger_QuestionDialog-->
+
+
+
     <Frame name="RaidLogger_RaidWindow" parent="UIParent" frameStrata="HIGH" enableMouse="true" movable="true" resizable="true">
         <Size x="200" y="200" />
         <Anchors>
@@ -264,8 +412,8 @@
                         <Offset x="-2" y="-2" />
                     </Anchor>
                 </Anchors>
-                <NormalTexture file="Interface\AddOns\RaidLogger\assets\FarmLogResizeButton" />
-                <HighlightTexture file="Interface\AddOns\RaidLogger\assets\FarmLogResizeButton" />
+                <NormalTexture file="Interface\AddOns\RaidLogger\assets\resize" />
+                <HighlightTexture file="Interface\AddOns\RaidLogger\assets\resize" />
                 <Scripts>
                     <OnMouseDown>
                         RaidLogger_RaidWindow:StartSizing("BOTTOMLEFT")
@@ -428,7 +576,7 @@
                                     </OnEnterPressed>
                                 </Scripts>
                                 <FontString inherits="RaidLoggerFont" />
-                            </EditBox>    <!-- RaidLogger_Players_SearchBox -->
+                            </EditBox>                            <!-- RaidLogger_Players_SearchBox -->
                         </Frames>
                     </Frame>
                 </ScrollChild>
