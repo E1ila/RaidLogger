@@ -47,6 +47,7 @@
                 self:RegisterEvent("RAID_INSTANCE_WELCOME");
                 self:RegisterEvent("ZONE_CHANGED_NEW_AREA");
                 self:RegisterEvent("CHAT_MSG_LOOT");
+            	self:RegisterEvent("CHAT_MSG_ADDON")
             </OnLoad>
             <OnEvent>
                 self:OnEvent(event, ...)

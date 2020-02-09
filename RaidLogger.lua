@@ -9,6 +9,7 @@ local VERSION = 1.6
 local MIN_RAID_PLAYERS = 2
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
+local ADDON_PREFIX = "ZE2okI8Vx5H72L"
 
 local TRACKED_INSTANCES = {
     [1] = "The Molten Core",
@@ -52,11 +53,14 @@ local QUALITY_RARE = 3 -- blue
 local QUALITY_EPIC = 4 -- purple
 local QUALITY_LEGENDARY = 5 -- orange
 
+local SYNC_LOOT = "loot"
+
 local BUFF_CHECK_SECONDS = 60 
 
 local lastBuffCheck = 0
 local editRaid = nil 
 local editRaidIndex = nil
+RaidLoggerDelayedMessages = {}
 
 RaidLoggerStore = {
     raids = {},
@@ -72,6 +76,22 @@ end
 
 local function err(text)
 	out(""..text)
+end 
+
+local function removeRealmName(playerRealmName) 
+	local fixedRealmName = gRealmName:gsub("%s+", "")
+	if string.match(playerRealmName, fixedRealmName) then 
+		return string.gsub(playerRealmName, "-"..fixedRealmName, "") 
+	end 
+	return playerRealmName
+end 
+
+local function splitCsv(text, sep) 
+	local result = {}
+	for word in string.gmatch(text, '([^,]+)') do 
+		table.insert(result, word)
+	end 
+	return result 
 end 
 
 local function tableTextLookup(table, text)
@@ -133,7 +153,6 @@ local function AttStatusFromString(text)
     if text == "No Show" then return STATE_NOSHOW end
     return "??"
 end 
-
 
 -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 --   LOGGER LOGIC
@@ -206,6 +225,9 @@ local function LogLoot(who, loot, quantity, zone)
         })
         RaidLoggerStore.activeRaid.lootCount = RaidLoggerStore.activeRaid.lootCount + 1
         RaidLogger_RaidWindow_LootTab:Refresh()
+
+        local linkParts = {_G.string.split(":", loot)}
+        RaidLogger:Post(4, SYNC_LOOT, who, linkParts[2])
     end
 end
 
@@ -277,7 +299,7 @@ function RaidLogger_Commands(msg)
         else 
             out("Incorrect usage of command, write |cff00ff00/rl log [ITEM_LINK] [RECEIVER_NAME]")
         end 
-    elseif  "counsil" == cmd then
+    elseif  "COUNSIL" == cmd then
         if arg1 and string.len(arg1) > 0 then
             if arg1 == "disable" then
                 out("Loot council disabled.");
@@ -288,9 +310,10 @@ function RaidLogger_Commands(msg)
         else
             err("Missing player name!")
         end
-    elseif  "sync" == cmd then
+    elseif  "SYNC" == cmd then
         if arg1 and string.len(arg1) > 0 then
             RaidLoggerStore.sync = arg1 
+            ReloadUI()
         else
             err("Missing sync password!")
         end
@@ -519,6 +542,23 @@ end
 
 
 -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--   SYNC
+
+function RaidLogger:OnAddonMessage(text, channel, sender, target)
+    sender = removeRealmName(sender)
+    local parts = splitCsv(text)
+    out("SYNC IN - "..text)
+end 
+
+function RaidLogger:Post(delaySeconds, ...) 
+    tinsert(RaidLoggerDelayedMessages, {
+        ["time"] = time() + delaySeconds,
+        ["msg"] = table.concat({...}, ","),
+    })
+end 
+
+
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 --   ADDON FRAME 
 
 function RaidLoggerFrame:OnAddonLoaded()
@@ -529,6 +569,26 @@ function RaidLoggerFrame:OnAddonLoaded()
     RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_LootTab)
     RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_PlayersTab)
     RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_RaidsTab)
+
+    -- saved variables loaded
+    if Store and Store.raids and #Store.raids > 0 and (not RaidLoggerStore or not RaidLoggerStore.raids or #RaidLoggerStore.raids == 0) then 
+        RaidLoggerStore = Store 
+        Store = nil 
+    end 
+    if RaidLoggerStore and RaidLoggerStore.activeRaid then
+        LoggingCombat(true) -- resume combat logging
+        EndRaidReminder()
+    end
+    RaidLogger:ChooseLastRaid()
+    RaidLogger_RaidWindow:Refresh();
+    RaidLogger_RaidWindow_Buttons_LootTab:Clicked()
+
+    if RaidLoggerStore.sync then 
+        successfulRequest = C_ChatInfo.RegisterAddonMessagePrefix(ADDON_PREFIX..RaidLoggerStore.sync)
+        if not successfulRequest then 
+            printerr("Failed registering to message prefix!")
+        end 
+    end 
 end
 
 function RaidLoggerFrame:OnUpdate()
@@ -538,24 +598,24 @@ function RaidLoggerFrame:OnUpdate()
         lastBuffCheck = time() 
         RaidLogger_CheckBuffs(RaidLoggerStore.activeRaid.buffs)
     end 
+    if #RaidLoggerDelayedMessages then 
+        newStack = {}
+        for _, meta in ipairs(RaidLoggerDelayedMessages) do 
+            if meta.time <= time() then 
+                out("SYNC OUT - "..meta.msg)
+                C_ChatInfo.SendAddonMessage(ADDON_PREFIX..RaidLoggerStore.sync, meta.msg, "RAID")
+            else 
+                tinsert(newStack, meta)
+            end
+        end 
+        RaidLoggerDelayedMessages = newStack
+    end 
 end 
 
-function RaidLoggerFrame:OnEvent(event, arg1)
+function RaidLoggerFrame:OnEvent(event, arg1, ...)
     if event == "ADDON_LOADED" then
         if arg1 == ADDON_NAME then 
             self:OnAddonLoaded()
-            -- saved variables loaded
-            if Store and Store.raids and #Store.raids > 0 and (not RaidLoggerStore or not RaidLoggerStore.raids or #RaidLoggerStore.raids == 0) then 
-                RaidLoggerStore = Store 
-                Store = nil 
-            end 
-            if RaidLoggerStore and RaidLoggerStore.activeRaid then
-                LoggingCombat(true) -- resume combat logging
-                EndRaidReminder()
-            end
-            RaidLogger:ChooseLastRaid()
-            RaidLogger_RaidWindow:Refresh();
-            RaidLogger_RaidWindow_Buttons_LootTab:Clicked()
         end 
     else
         -- out("|c44FFFFFF"..event.." event")
@@ -576,6 +636,8 @@ function RaidLoggerFrame:OnEvent(event, arg1)
                     EndRaidReminder();
                 end
             end
+        elseif event == "CHAT_MSG_ADDON" and RaidLoggerStore.sync and arg1 == ADDON_PREFIX..RaidLoggerStore.sync then
+            RaidLogger:OnAddonMessage(...)
         end
     end
 end
@@ -745,15 +807,15 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
     if not row.statusImage then 
         row.statusFrame = CreateFrame("FRAME", nil, row.root);
         row.statusFrame:SetSize(16, 16)
-        row.statusFrame:SetPoint("LEFT", 40, 0)  
+        row.statusFrame:SetPoint("LEFT", 46, 0)  
         row.statusFrame:SetScript("OnLeave", function(self)
             GameTooltip_Hide();
         end);	
         row.statusImage = row.root:CreateTexture();
         row.statusImage:SetAllPoints(row.statusFrame)
     end 
-    if activeRaid then 
-        playerDropdownOffX = -10
+    
+    local function updateStatusImage(row, entry)
         local statusImage = "question"
         local statusTooltip = "Undecided"
         if entry.status == 1 then 
@@ -769,6 +831,15 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
             GameTooltip:SetText(statusTooltip)
             GameTooltip:Show()
         end);
+    end 
+
+    if activeRaid then 
+        playerDropdownOffX = -10
+        if entry.tradedTo then 
+            updateStatusImage(row, entry)
+        else 
+            row.statusImage:SetTexture(nil)
+        end 
     else 
         row.statusImage:SetTexture(nil)
         row.statusFrame:SetScript("OnEnter", nil)
@@ -783,70 +854,38 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
 	row.timeLabel:SetText(date("%H:%M", entry.ts));
 
     if not row.playerDropdown then 
-        local function Dropdown_OnClick(self)
-            entry.tradedTo = self.value 
-            entry.votes = {}
-            entry.status = 0
-            entry.de = 0
-            entry.os = 0
-            UIDropDownMenu_SetText(row.playerDropdown, self.value)
-        end
         row.playerDropdown = CreateFrame("Frame", "RaidLogger_RaidWindow_PlayerDropdown"..(self.visibleRows), row.root, "UIDropDownMenuTemplate")
         UIDropDownMenu_SetWidth(row.playerDropdown, 100) 
         UIDropDownMenu_JustifyText(row.playerDropdown, "LEFT")
-        UIDropDownMenu_Initialize(row.playerDropdown, function (frame, level, menuList)
-            local info = UIDropDownMenu_CreateInfo()
-            info.func = Dropdown_OnClick
-            for _, name in ipairs(players) do 
-                info.text, info.checked = name, name == (entry.tradedTo or entry.player)
-                UIDropDownMenu_AddButton(info)
-            end 
-        end)
-        row.playerDropdown:Show()    
     end 
-	row.playerDropdown:ClearAllPoints()
+    local function Dropdown_OnClick(self)
+        entry.tradedTo = self.value 
+        entry.votes = {}
+        entry.status = 0
+        entry.de = 0
+        entry.os = 0
+        UIDropDownMenu_SetText(row.playerDropdown, self.value)
+        updateStatusImage(row, entry)
+    end
+    UIDropDownMenu_Initialize(row.playerDropdown, function (frame, level, menuList)
+        local info = UIDropDownMenu_CreateInfo()
+        info.func = Dropdown_OnClick
+        for _, name in ipairs(players) do 
+            info.text, info.checked = name, name == (entry.tradedTo or entry.player)
+            UIDropDownMenu_AddButton(info)
+        end 
+    end)
+    row.playerDropdown:ClearAllPoints()
     row.playerDropdown:SetPoint("LEFT", row.statusImage, "RIGHT", playerDropdownOffX, -2)
     UIDropDownMenu_SetText(row.playerDropdown, entry.tradedTo or entry.player)
-
-    if not row.deButton then 
-        row.deButton = CreateFrame("BUTTON", nil, row.root);
-        row.deButton:SetSize(16, 16)
-        row.deButton:SetPoint("LEFT", row.playerDropdown, "RIGHT", -8, 3)
-        row.deButton:RegisterForClicks("AnyUp")
-    end 
-    setButtonState(entry.de, "de", row.deButton)
-    row.deButton:SetScript("OnClick", function(self) 
-        entry.de = 1 - entry.de 
-        setButtonState(entry.de, "de", self)
-        if entry.bank == 1 and entry.de == 1 then
-            entry.bank = 0
-            setButtonState(entry.bank, "bank", row.bankButton)
-        end 
-    end)
-
-    if not row.bankButton then 
-        row.bankButton = CreateFrame("BUTTON", nil, row.root);
-        row.bankButton:SetSize(16, 16)
-        row.bankButton:SetPoint("LEFT", row.deButton, "RIGHT", 7, -1)
-        row.bankButton:RegisterForClicks("AnyUp")
-    end 
-    setButtonState(entry.bank, "bank", row.bankButton)
-    row.bankButton:SetScript("OnClick", function(self) 
-        entry.bank = 1 - (entry.bank or 0)
-        setButtonState(entry.bank, "bank", self)
-        if entry.de == 1 and entry.bank == 1 then
-            entry.de = 0
-            setButtonState(entry.de, "de", row.deButton)
-        end 
-    end)
 
 	if not row.label then 
 		row.labelFrame = CreateFrame("FRAME", nil, row.root);		
         -- row.labelFrame:SetPoint("RIGHT", row.root, "RIGHT", -10, 0)
 		row.label = row.labelFrame:CreateFontString(nil, "ARTWORK", "ChatFontNormal")
 		row.label:SetTextColor(0.8, 0.8, 0.8, 1)
-		row.label:SetPoint("TOPLEFT", row.bankButton, "TOPRIGHT", 8, -1)
-        row.label:SetPoint("BOTTOMLEFT", row.bankButton, "BOTTOMRIGHT", 8, -1)
+		row.label:SetPoint("TOPLEFT", row.playerDropdown, "TOPRIGHT", -7, 0)
+        row.label:SetPoint("BOTTOMLEFT", row.playerDropdown, "BOTTOMRIGHT", -7, 3)
         row.label:SetJustifyV("MIDDLE");
 		row.label:SetFont(FONT_NAME, 10)
 
@@ -861,22 +900,23 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
         row.yesButton:SetSize(16, 16)
         row.yesButton:SetPoint("RIGHT", -8, 0)
         row.yesButton:RegisterForClicks("AnyUp")
-        row.yesButton:SetNormalTexture("Interface\\AddOns\\RaidLogger\\assets\\agree")
-        row.yesButton:SetPushedTexture("Interface\\AddOns\\RaidLogger\\assets\\agree")
-        row.yesButton:SetHighlightTexture("Interface\\AddOns\\RaidLogger\\assets\\agree")
-        row.yesButton:SetScript("OnClick", function(self) out("yes") end)
     end 
-
     if not row.noButton then 
         row.noButton = CreateFrame("BUTTON", nil, row.root);
         row.noButton:SetSize(16, 16)
         row.noButton:SetPoint("RIGHT", row.yesButton, "LEFT", -8, 0)
         row.noButton:RegisterForClicks("AnyUp")
-        row.noButton:SetNormalTexture("Interface\\AddOns\\RaidLogger\\assets\\disagree")
-        row.noButton:SetPushedTexture("Interface\\AddOns\\RaidLogger\\assets\\disagree")
-        row.noButton:SetHighlightTexture("Interface\\AddOns\\RaidLogger\\assets\\disagree")
-        row.noButton:SetScript("OnClick", function(self) out("no") end)
 	end 
+    setButtonState(0, "agree", row.yesButton)
+    setButtonState(0, "disagree", row.noButton)
+    row.yesButton:SetScript("OnClick", function(self) 
+        setButtonState(1, "agree", self)
+        setButtonState(0, "disagree", row.noButton)
+    end)
+    row.noButton:SetScript("OnClick", function(self) 
+        setButtonState(1, "disagree", self)
+        setButtonState(0, "agree", row.yesButton)
+    end)
 
     if activeRaid then 
         row.yesButton:Show()
@@ -898,7 +938,7 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
         -- row.root:SetBackdropColor(1, 1, 1, 0.2)
     end);	
 
-    row.root:SetScript("OnMouseUp", function(self, ...)
+    row.labelFrame:SetScript("OnMouseUp", function(self, ...)
 		if IsShiftKeyDown() then
 			PlaceLinkInChatEditBox(entry.link) -- paste in chat box
 		elseif IsControlKeyDown() then
@@ -924,6 +964,8 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
         RaidLogger_RaidWindow_Title_Text:SetText(title)
 
         local players = {}
+        tinsert(players, "-- Disenchant --")
+        tinsert(players, "-- Bank --")
         for name, attStatus in pairs(editRaid.players) do 
             if attStatus == "a" then tinsert(players, name) end 
         end 
@@ -937,7 +979,7 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
             local epicItem = entry.quality >= 0
             local searchMatch = searchText == "" or string.find(string.lower(entry.item), searchText)
             if (epicItem or blueRecipe) and searchMatch then 
-                self:AddRow(players, entry)
+                self:AddRow(players, entry, not editRaid.endTime)
             end 
         end
     end
