@@ -590,6 +590,7 @@ function RaidLoggerFrame:OnAddonLoaded()
     RaidLogger_RaidWindow_Buttons_LootTab:Clicked()
 
     if RaidLoggerStore.sync then 
+        out("Registring for sync on "..RaidLoggerStore.sync)
         successfulRequest = C_ChatInfo.RegisterAddonMessagePrefix(ADDON_PREFIX..RaidLoggerStore.sync)
         if not successfulRequest then 
             printerr("Failed registering to message prefix!")
@@ -609,7 +610,7 @@ function RaidLoggerFrame:OnUpdate()
         for _, meta in ipairs(RaidLoggerDelayedMessages) do 
             if meta.time <= time() then 
                 out("SYNC OUT - "..meta.msg)
-                C_ChatInfo.SendAddonMessage(ADDON_PREFIX..RaidLoggerStore.sync, meta.msg, "RAID")
+                C_ChatInfo.SendAddonMessage(ADDON_PREFIX..RaidLoggerStore.sync, meta.msg, "PARTY")
             else 
                 tinsert(newStack, meta)
             end
@@ -642,8 +643,11 @@ function RaidLoggerFrame:OnEvent(event, arg1, ...)
                     EndRaidReminder();
                 end
             end
-        elseif event == "CHAT_MSG_ADDON" and RaidLoggerStore.sync and arg1 == ADDON_PREFIX..RaidLoggerStore.sync then
-            RaidLogger:OnAddonMessage(...)
+        elseif event == "CHAT_MSG_ADDON" and RaidLoggerStore.sync then
+            out("CHAT_MSG_ADDON "..arg1)
+            if arg1 == ADDON_PREFIX..RaidLoggerStore.sync then 
+                RaidLogger:OnAddonMessage(...)
+            end 
         end
     end
 end
