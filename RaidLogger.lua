@@ -317,6 +317,12 @@ function RaidLogger_Commands(msg)
         else
             err("Missing sync password!")
         end
+    elseif  "TEST" == cmd then
+        if arg1 and string.len(arg1) > 0 then
+            RaidLogger:Post(1, arg1)
+        else
+            err("Missing sync test text!")
+        end
     elseif  "BENCH" == cmd or "B" == cmd then
         if arg1 and string.len(arg1) > 0 then
             RaidLogger:LogBenched(FixPlayerName(arg1))
