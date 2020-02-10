@@ -212,7 +212,9 @@ end
 local function LogLoot(who, loot, quantity, ts)
     -- local vStartIndex, vEndIndex, vLinkColor, vItemCode, vItemEnchantCode, vItemSubCode, vUnknownCode, vItemName = strfind(loot, "|c(%x+)|Hitem:(%d+):(%d+):(%d+):(%d+)|h%[([^%]]+)%]|h|r");
     local itemName, itemLink, quality, _, _, itemType, _, _, _, _, vendorPrice = GetItemInfo(loot);
-    local linkParts = {_G.string.split(":", itemLink)}
+    local startIndex, _ = string.find(itemLink, "%|H");
+    local _, endIndex = string.find(itemLink, "%|h");
+    local itemString = string.sub(itemLink, startIndex, endIndex);	
 
     if who and quality >= QUALITY_UNCOMMON and not tableTextLookup(IGNORED_ITEMS, vItemName) then
         out("Logged loot: " .. ColorName(who) .. " received " .. itemLink)
@@ -230,12 +232,14 @@ local function LogLoot(who, loot, quantity, ts)
             votes = {},
             status = 0,
             idx = RaidLoggerStore.activeRaid.lootCount,
-            itemId = tonumber(linkParts[2]),
+            itemString = itemString,
         }
         table.insert(RaidLoggerStore.activeRaid.loot, entry)
         RaidLogger_RaidWindow_LootTab:Refresh()
 
-        RaidLogger:Post(1, SYNC_LOOT, entry.player, entry.itemId, entry.quantity, entry.ts, entry.idx)
+        if not ts then 
+            RaidLogger:Post(1, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx)
+        end 
     end
 end
 
@@ -572,13 +576,13 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
     debug("SYNC IN - ["..sender.."]: "..text)
 
     if parts[1] == SYNC_LOOT then 
-        -- 2-receiver, 3-itemId, 4-quantity, 5-ts, 6-index
+        -- 2-receiver, 3-itemString, 4-quantity, 5-ts, 6-index
         if RaidLoggerStore.activeRaid then 
             local t = time() - 10
             local idx = tonumber(parts[6])
             local ts = tonumber(parts[5])
             local quantity = tonumber(parts[4])
-            local itemId = tonumber(parts[3])
+            local itemString = parts[3]
             local who = parts[2]
 
             local shouldAdd = true
@@ -587,6 +591,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                 if loggedItem.idx == idx then 
                     if loggedItem.itemId == itemId then 
                         shouldAdd = false 
+                        debug("Found matching loot entry")
                         break -- found it
                     else 
                         shouldAdd = false 
@@ -596,8 +601,8 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                 end 
             end
             if shouldAdd then 
-                debug("itemId = "..itemId.." -- "..parts[3])
-                LogLoot(who, itemId, quantity, ts)
+                debug("itemString = "..itemString)
+                LogLoot(who, itemString, quantity, ts)
             end 
         else 
             out("Received loot sync, but no active raid - ignoring")
