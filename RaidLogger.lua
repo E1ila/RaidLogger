@@ -77,6 +77,13 @@ RaidLoggerStore = {
 
 RaidLogger = {}
 
+local function questionOp(cond, trueValue, falseValue)
+    if cond then 
+        return trueValue
+    end 
+    return falseValue
+end 
+
 local function out(text)
 	print(" |cff0088ff<|cff00bbffRaidLogger|cff0088ff>|r "..text)
 end 
@@ -1121,9 +1128,10 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid, voting
         row.noButton:SetSize(16, 16)
         row.noButton:SetPoint("RIGHT", row.yesButton, "LEFT", -8, 0)
         row.noButton:RegisterForClicks("AnyUp")
-	end 
-    setButtonState(0, "agree", row.yesButton)
-    setButtonState(0, "disagree", row.noButton)
+    end 
+    local vote = entry.votes[UnitName("player")] 
+    setButtonState(questionOp(vote == 1, 1, 0), "agree", row.yesButton)
+    setButtonState(questionOp(vote == 0, 1, 0), "disagree", row.noButton)
     row.yesButton:SetScript("OnClick", function(self) 
         setButtonState(1, "agree", self)
         setButtonState(0, "disagree", row.noButton)
