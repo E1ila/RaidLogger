@@ -635,21 +635,21 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
     local function VerifyLoot(parts) 
         if not RaidLoggerStore.activeRaid then 
             out("Couldn't set vote, no active raid")
-            return false
+            return nil
         end 
         local idx = tonumber(parts[2])
         if #RaidLoggerStore.activeRaid.loot < idx then 
             out("Couldn't set vote, loot #"..idx.." is missing")
-            return false
+            return nil
         end 
         local entry = RaidLoggerStore.activeRaid.loot[idx]
         if entry.itemString ~= parts[3] then 
             __p1 = entry.itemString
             __p2 = parts[3]
             out("Wrong item at index "..idx..", expected "..parts[3].." but got "..entry.itemString.." - ignoring vote")
-            return false
+            return nil
         end 
-        return true 
+        return entry 
     end 
 
     if parts[1] == SYNC_LOOT then 
@@ -712,7 +712,8 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
     end
 
     if parts[1] == SYNC_VOTE then 
-        if not VerifyLoot(parts) then return end 
+        local entry = VerifyLoot(parts)
+        if not entry then return end 
         
         if entry.votes[sender] == tonumber(parts[4]) then return end -- vote already recorded
 
@@ -725,7 +726,8 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
     end 
 
     if parts[1] == SYNC_SUGGEST then 
-        if not VerifyLoot(parts) then return end 
+        local entry = VerifyLoot(parts)
+        if not entry then return end 
 
         if entry.tradedTo == parts[4] then return end -- tradeTo already recorded
 
