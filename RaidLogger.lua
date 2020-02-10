@@ -608,7 +608,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                 end 
             end
             if shouldAdd then 
-                debug("itemString = "..itemString)
+                debug("who="..who.." itemString="..itemString.." quantity="..quantity.." ts="..ts)
                 LogLoot(who, itemString, quantity, ts)
             end 
         else 
