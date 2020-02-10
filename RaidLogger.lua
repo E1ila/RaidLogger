@@ -212,6 +212,11 @@ end
 local function LogLoot(who, loot, quantity, ts)
     -- local vStartIndex, vEndIndex, vLinkColor, vItemCode, vItemEnchantCode, vItemSubCode, vUnknownCode, vItemName = strfind(loot, "|c(%x+)|Hitem:(%d+):(%d+):(%d+):(%d+)|h%[([^%]]+)%]|h|r");
     local itemName, itemLink, quality, _, _, itemType, _, _, _, _, vendorPrice = GetItemInfo(loot);
+
+    while not itemLink do 
+        itemName, itemLink, quality, _, _, itemType, _, _, _, _, vendorPrice = GetItemInfo(loot);
+    end 
+
     local startIndex, _ = string.find(itemLink, "item")
     local _, endIndex = string.find(itemLink, "h%[")
     local itemString = string.sub(itemLink, startIndex, endIndex-1)
