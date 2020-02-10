@@ -674,7 +674,7 @@ function RaidLoggerFrame:OnUpdate()
         lastBuffCheck = time() 
         RaidLogger_CheckBuffs(RaidLoggerStore.activeRaid.buffs)
     end 
-    if #RaidLoggerDelayedMessages then 
+    if RaidLoggerDelayedMessages and #RaidLoggerDelayedMessages then 
         newStack = {}
         for _, meta in ipairs(RaidLoggerDelayedMessages) do 
             if meta.time <= time() then 
@@ -686,7 +686,7 @@ function RaidLoggerFrame:OnUpdate()
         end 
         RaidLoggerDelayedMessages = newStack
     end 
-    if #RaidLoggerPendingLoot then 
+    if RaidLoggerPendingLoot and #RaidLoggerPendingLoot then 
         local params = RaidLoggerPendingLoot[1]
         table.remove(RaidLoggerPendingLoot, 1)
         LogLoot(params[1], params[2], params[3], params[4])
