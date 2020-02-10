@@ -188,7 +188,7 @@ local function TitleCase(first, rest)
 end
 
 local function FixPlayerName(player)
-    return string.gsub(player, "(%a)([%w_']*)", TitleCase)
+    return TitleCase(string.sub(player, 1, 1), string.sub(player, 2))
 end
 
 local function ColorName(who)
@@ -249,7 +249,7 @@ local function LogLoot(who, loot, quantity, ts)
         RaidLogger_RaidWindow_LootTab:Refresh()
 
         if not ts then 
-            RaidLogger:Post(1, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx)
+            RaidLogger:Post(1, nil, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx)
         end 
     end
 end
@@ -280,7 +280,8 @@ function RaidLogger:ParseLootMessage(msg, zone)
 end
 
 function RaidLogger_Commands(msg)
-    local _, _, cmd, arg1 = string.find(msg, "([%w]+)%s*(.*)$");
+    -- local _, _, cmd, arg1 = string.find(msg, "([%w]+)%s*(.*)$");
+    local cmd, arg1 = _G.string.split(" ", msg)
     cmd = string.upper(cmd)
     -- out("cmd " .. cmd .. " / arg1 " .. arg1)
     if not cmd then
@@ -300,7 +301,7 @@ function RaidLogger_Commands(msg)
         out("  |cFF00FF00/rl discard|r - discard current raid, do this to ignore current raid.")        
         out("  |cFF00FF00/rl end|r - save and close raid, do this when raid ended.")
         out("  |cFF00FF00/rl p|r - print active raid, if any.")
-        out("  |cFF00FF00/rl |cFF00ff95start|r - start logging a raid or update existing one.")
+        out("  |cFF00FF00/rl start|r - start logging a raid or update existing one.")
     elseif  "LOG" == cmd then
         if not RaidLoggerStore.activeRaid then 
             out("No active raid!")
@@ -343,14 +344,14 @@ function RaidLogger_Commands(msg)
         end
     elseif  "SEND" == cmd then
         if arg1 and string.len(arg1) > 0 then
-            RaidLogger:Post(1, arg1)
+            RaidLogger:Post(1, nil, arg1)
         else
             err("Missing sync test text!")
         end
     elseif  "RESEND" == cmd then
         if arg1 and string.len(arg1) > 0 then
             local entry = RaidLoggerStore.activeRaid.loot[tonumber(arg1)]
-            RaidLogger:Post(1, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx)
+            RaidLogger:Post(1, nil, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx)
         else
             err("Missing sync test text!")
         end
@@ -514,7 +515,7 @@ function RaidLogger:PackLootCounsil()
 end 
 
 function RaidLogger:AnnounceLootCounsil(packedCounsil) 
-    RaidLogger:Post(0, SYNC_COUNSIL, packedCounsil or self:PackLootCounsil())
+    RaidLogger:Post(0, nil, SYNC_COUNSIL, packedCounsil or self:PackLootCounsil())
 end 
 
 function RaidLogger:LogBenched(player)
@@ -649,7 +650,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         local currentCounsil = self:PackLootCounsil()
         if currentCounsil == parts[2] then return end -- counsil not changed
 
-        if #parts[2] == 0 then 
+        if not parts[2] or #parts[2] == 0 then 
             RaidLoggerStore.council = nil 
             out("Received loot counsil disable from "..sender)
         else 
@@ -670,10 +671,11 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
     end
 end 
 
-function RaidLogger:Post(delaySeconds, ...) 
+function RaidLogger:Post(delaySeconds, toWho, ...) 
     tinsert(RaidLoggerDelayedMessages, {
         ["time"] = time() + delaySeconds,
         ["msg"] = table.concat({...}, ","),
+        ["to"] = toWho,
     })
 end 
 
@@ -707,6 +709,7 @@ function RaidLoggerFrame:OnAddonLoaded()
         successfulRequest = C_ChatInfo.RegisterAddonMessagePrefix(ADDON_PREFIX..RaidLoggerStore.sync)
         if successfulRequest then 
             out("Registered for sync on "..RaidLoggerStore.sync)
+            RaidLogger:Post(5, nil, SYNC_COUNSIL_WHO)
         else 
             printerr("Failed registering to message prefix!")
         end 
@@ -725,7 +728,11 @@ function RaidLoggerFrame:OnUpdate()
         for _, meta in ipairs(RaidLoggerDelayedMessages) do 
             if meta.time <= time() then 
                 debug("SYNC OUT - "..meta.msg)
-                C_ChatInfo.SendAddonMessage(ADDON_PREFIX..RaidLoggerStore.sync, meta.msg, "RAID")
+                if meta.to then 
+                    C_ChatInfo.SendAddonMessage(ADDON_PREFIX..RaidLoggerStore.sync, meta.msg, "WHISPER", meta.to)
+                else 
+                    C_ChatInfo.SendAddonMessage(ADDON_PREFIX..RaidLoggerStore.sync, meta.msg, "RAID")
+                end 
             else 
                 tinsert(newStack, meta)
             end
