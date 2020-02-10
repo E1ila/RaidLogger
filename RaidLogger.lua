@@ -1018,7 +1018,7 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
     self.visibleRows = 0
     
     if editRaid then 
-        local title = editRaid.zone.." / "..editRaid.date
+        local title = (editRaid.zone or "??").." / "..editRaid.date
         if not editRaid.endTime then 
             title = title.." (active)"
         end
