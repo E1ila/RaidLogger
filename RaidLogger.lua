@@ -53,7 +53,7 @@ local QUALITY_RARE = 3 -- blue
 local QUALITY_EPIC = 4 -- purple
 local QUALITY_LEGENDARY = 5 -- orange
 
-local SYNC_LOOT = "LOOT"
+local SYNC_LOOT = "loot"
 
 local BUFF_CHECK_SECONDS = 60 
 
@@ -1017,7 +1017,7 @@ end
 function RaidLogger_RaidWindow_LootTab:Refresh()
     self.visibleRows = 0
     
-    if editRaid and editRaid.zone then 
+    if editRaid then 
         local title = editRaid.zone.." / "..editRaid.date
         if not editRaid.endTime then 
             title = title.." (active)"
