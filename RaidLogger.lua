@@ -91,6 +91,13 @@ local function err(text)
 	out(""..text)
 end 
 
+local function normalizeLink(link)
+	-- remove player level from item link
+	local parts = {_G.string.split(":", link)}
+	parts[10] = "_"
+	return table.concat(parts, ":") 
+end 
+
 local function removeRealmName(playerRealmName) 
     local nameParts = {_G.string.split("-", playerRealmName)}
 	return nameParts[1]
@@ -224,9 +231,10 @@ local function LogLoot(who, loot, quantity, ts)
         return
     end 
 
+    itemLink = normalizeLink(itemLink)
     local startIndex, _ = string.find(itemLink, "item")
     local _, endIndex = string.find(itemLink, "h%[")
-    local itemString = string.sub(itemLink, startIndex, endIndex-1)
+    local itemString = string.sub(itemLink, startIndex, endIndex-3)
 
     if who and quality >= QUALITY_UNCOMMON and not tableTextLookup(IGNORED_ITEMS, vItemName) then
         out("Logged loot: " .. ColorName(who) .. " received " .. itemLink)
@@ -685,6 +693,8 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         end 
         local entry = RaidLoggerStore.activeRaid.loot[idx]
         if entry.itemString ~= parts[3] then 
+            __p1 = entry.itemString
+            __p2 = parts[3]
             out("Wrong item at index "..idx..", expected "..parts[3].." but got "..entry.itemString.." - ignoring vote")
             return 
         end 
@@ -701,10 +711,9 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
 end 
 
 function RaidLogger:Post(delaySeconds, toWho, ...) 
-    RaidLoggerPostParams = {...}
     tinsert(RaidLoggerDelayedMessages, {
         ["time"] = time() + delaySeconds,
-        ["msg"] = table.concat(RaidLoggerPostParams, ","),
+        ["msg"] = table.concat({...}, ","),
         ["to"] = toWho,
     })
 end 
