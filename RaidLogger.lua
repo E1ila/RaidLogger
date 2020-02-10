@@ -503,6 +503,7 @@ function RaidLogger:SetLootCouncil(player)
         RaidLoggerStore.council[player] = true  
     end 
     self:AnnounceLootCouncil()
+    RaidLogger_RaidWindow_LootTab:Refresh()
 end
 
 function RaidLogger:PackLootCouncil() 
@@ -661,6 +662,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                 RaidLoggerStore.council[name] = true 
             end 
             out("Received new loot council from "..sender..": "..parts[2])
+            RaidLogger_RaidWindow_LootTab:Refresh()
         end 
     end
 
@@ -718,7 +720,7 @@ function RaidLogger:CheckVotes(entry)
     local sum = 0
     local max = 0
     local veto = {}
-    for name, enabled in RaidLoggerStore.council do 
+    for name, enabled in pairs(RaidLoggerStore.council) do 
         if enabled and raidPlayers[name] then
             max = max + 1
             if entry.votes[name] == 1 then 
@@ -1113,13 +1115,13 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid, voting
     row.yesButton:SetScript("OnClick", function(self) 
         setButtonState(1, "agree", self)
         setButtonState(0, "disagree", row.noButton)
-        RaidLogger:Post(1, SYNC_VOTE, entry.idx, itemString, 1)
+        RaidLogger:Post(1, SYNC_VOTE, nil, entry.idx, entry.itemString, 1)
         RaidLogger:CheckVotes(entry)
     end)
     row.noButton:SetScript("OnClick", function(self) 
         setButtonState(1, "disagree", self)
         setButtonState(0, "agree", row.yesButton)
-        RaidLogger:Post(1, SYNC_VOTE, entry.idx, itemString, 0)
+        RaidLogger:Post(1, SYNC_VOTE, nil, entry.idx, entry.itemString, 0)
         RaidLogger:CheckVotes(entry)
     end)
 
