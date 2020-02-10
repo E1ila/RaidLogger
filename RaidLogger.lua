@@ -62,6 +62,7 @@ local editRaid = nil
 local editRaidIndex = nil
 local debugMode = true
 RaidLoggerDelayedMessages = {}
+RaidLoggerPendingLoot = {}
 
 RaidLoggerStore = {
     raids = {},
@@ -213,8 +214,9 @@ local function LogLoot(who, loot, quantity, ts)
     -- local vStartIndex, vEndIndex, vLinkColor, vItemCode, vItemEnchantCode, vItemSubCode, vUnknownCode, vItemName = strfind(loot, "|c(%x+)|Hitem:(%d+):(%d+):(%d+):(%d+)|h%[([^%]]+)%]|h|r");
     local itemName, itemLink, quality, _, _, itemType, _, _, _, _, vendorPrice = GetItemInfo(loot);
 
-    while not itemLink do 
-        itemName, itemLink, quality, _, _, itemType, _, _, _, _, vendorPrice = GetItemInfo(loot);
+    if not itemLink then
+        tinsert(RaidLoggerPendingLoot, {who, loot, quantity, ts})
+        return
     end 
 
     local startIndex, _ = string.find(itemLink, "item")
@@ -683,6 +685,11 @@ function RaidLoggerFrame:OnUpdate()
             end
         end 
         RaidLoggerDelayedMessages = newStack
+    end 
+    if #RaidLoggerPendingLoot then 
+        local params = RaidLoggerPendingLoot[1]
+        table.remove(RaidLoggerPendingLoot, 1)
+        LogLoot(params[1], params[2], params[3], params[4])
     end 
 end 
 
