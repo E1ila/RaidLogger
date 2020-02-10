@@ -59,12 +59,15 @@ local SYNC_COUNCIL_WHO = "council?"
 local SYNC_VOTE = "vote"
 local SYNC_SUGGEST = "suggest"
 
+local DROPDOWN_DISENCHANT_NAME = "-- Disenchant --"
+local DROPDOWN_BANK_NAME = "-- Bank --"
+
 local BUFF_CHECK_SECONDS = 60 
 
 local lastBuffCheck = 0
 local editRaid = nil 
 local editRaidIndex = nil
-local debugMode = true
+local debugMode = false
 local lastCouncilSync = 0
 local votingEnabled = false 
 
@@ -375,6 +378,9 @@ function RaidLogger_Commands(msg)
                 RaidLogger:Post(i, nil, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx)
             end 
         end
+    elseif  "CLEAR" == cmd then
+        RaidLoggerStore.activeRaid.loot = {}
+        RaidLogger_RaidWindow_Buttons_LootTab:Refresh()
     elseif  "BENCH" == cmd or "B" == cmd then
         if arg1 and string.len(arg1) > 0 then
             RaidLogger:LogBenched(FixPlayerName(arg1))
@@ -457,6 +463,9 @@ function RaidLogger_Commands(msg)
         end
     elseif  "VERSION" == cmd or "V" == cmd then
         out("Version |cFFFFFF00" .. VERSION)
+    elseif  "DEBUG" == cmd then
+        debugMode = not debugMode
+        out("Debug mode: " .. tostring(debugMode))
     elseif  "END" == cmd then
         out("Raid ended, saving.")
         RaidLogger:EndRaid()
@@ -736,7 +745,13 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         local row = RaidLogger_RaidWindow_LootTab.rows[#RaidLogger_RaidWindow_LootTab.rows - entry.idx + 1]
         RaidLogger_RaidWindow_LootTab:TradedToChanged(row, entry) 
 
-        out(sender.." suggests to give "..entry.link.." to "..entry.tradedTo)
+        if entry.tradedTo == DROPDOWN_DISENCHANT_NAME then 
+            out(sender.." suggests to disenchant "..entry.link)
+        elseif entry.tradedTo == DROPDOWN_BANK_NAME then 
+            out(sender.." suggests to send "..entry.link.." to guild bank")
+        else 
+            out(sender.." suggests to give "..entry.link.." to "..entry.tradedTo)
+        end 
     end 
 end 
 
@@ -775,7 +790,7 @@ function RaidLogger:CheckVotes(entry)
     end 
     if sum >= max and entry.status ~= 1 then 
         entry.status = 1
-        out("Loot "..entry.link.." AGREED to be given to "..entry.tradedTo.." with "..sum.." / "..max.." votes.")
+        out("Loot "..entry.link.." |cff00ff00AGREED|r to be given to "..entry.tradedTo.." with "..sum.." / "..max.." votes.")
     elseif #veto > 0 then 
         entry.status = -1
     end 
@@ -1223,8 +1238,8 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
         RaidLogger_RaidWindow_Title_Text:SetText(title)
 
         local players = {}
-        tinsert(players, "-- Disenchant --")
-        tinsert(players, "-- Bank --")
+        tinsert(players, DROPDOWN_DISENCHANT_NAME)
+        tinsert(players, DROPDOWN_BANK_NAME)
         for name, attStatus in pairs(editRaid.players) do 
             if attStatus == "a" then tinsert(players, name) end 
         end 
