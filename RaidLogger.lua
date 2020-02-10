@@ -713,7 +713,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         entry.votes[sender] = tonumber(parts[4])
         local voteStr = "|cffff0000NO|r"
         if entry.votes[sender] == 1 then voteStr = "|cff00ff00YES|r" end 
-        out(sender.." voted "..voteStr.." to give "..entry.link.." to "..(entry.tradedTo or entry.player))
+        out(sender.." voted "..voteStr.." to give "..entry.link.." to "..entry.tradedTo)
 
         self:CheckVotes(entry)
     end 
@@ -754,7 +754,7 @@ function RaidLogger:CheckVotes(entry)
     end 
     if sum >= max and entry.status ~= 1 then 
         entry.status = 1
-        out("Loot "..entry.link.." AGREED to be given to "..(entry.tradedTo or entry.player).." with "..sum.." / "..max.." votes.")
+        out("Loot "..entry.link.." AGREED to be given to "..entry.tradedTo.." with "..sum.." / "..max.." votes.")
     elseif #veto > 0 then 
         entry.status = -1
     end 
@@ -1088,18 +1088,22 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid, voting
         entry.os = 0
         UIDropDownMenu_SetText(row.playerDropdown, self.value)
         RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
+        if votingEnabled then 
+            row.yesButton:Show()
+            row.noButton:Show()
+        end 
     end
     UIDropDownMenu_Initialize(row.playerDropdown, function (frame, level, menuList)
         local info = UIDropDownMenu_CreateInfo()
         info.func = Dropdown_OnClick
         for _, name in ipairs(players) do 
-            info.text, info.checked = name, name == (entry.tradedTo or entry.player)
+            info.text, info.checked = name, name == entry.tradedTo
             UIDropDownMenu_AddButton(info)
         end 
     end)
     row.playerDropdown:ClearAllPoints()
     row.playerDropdown:SetPoint("LEFT", row.statusImage, "RIGHT", playerDropdownOffX, -2)
-    UIDropDownMenu_SetText(row.playerDropdown, entry.tradedTo or entry.player)
+    UIDropDownMenu_SetText(row.playerDropdown, entry.tradedTo or "")
 
 	if not row.label then 
 		row.labelFrame = CreateFrame("FRAME", nil, row.root);		
@@ -1147,7 +1151,7 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid, voting
         RaidLogger:CheckVotes(entry)
     end)
 
-    if votingEnabled then 
+    if votingEnabled and entry.tradedTo then 
         row.yesButton:Show()
         row.noButton:Show()
     else 
