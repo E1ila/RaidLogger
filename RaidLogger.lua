@@ -548,10 +548,16 @@ end
 
 function RaidLogger:ChooseLastRaid()
     editRaidIndex = nil 
-    if RaidLoggerStore.activeRaid then 
-        editRaidIndex = #RaidLoggerStore.raids
+    if not RaidLoggerStore.activeRaid then 
+        if #RaidLoggerStore.raids > 0 then 
+            editRaidIndex = #RaidLoggerStore.raids
+            editRaid = RaidLoggerStore.raids[editRaidIndex]
+        else 
+            editRaid = nil 
+        end 
+    else 
+        editRaid = RaidLoggerStore.activeRaid 
     end 
-    editRaid = RaidLoggerStore.activeRaid or RaidLoggerStore.raids[#RaidLoggerStore.raids]
 end
 
 
@@ -1115,21 +1121,23 @@ end
 function RaidLogger_RaidWindow_PlayersTab:Refresh()
     self.visibleRows = 0
     
-    local players = {}
-    for name, attStatus in pairs(editRaid.players) do 
-        tinsert(players, name)
-    end 
-    table.sort(players)
-
-    local searchText = string.lower(RaidLogger_Players_SearchBox:GetText())
-
-    for _, name in ipairs(players) do
-        local searchMatch = searchText == "" or string.find(string.lower(name), searchText)
-        if searchMatch then 
-            self:AddRow(name, editRaid.players[name])
+    if editRaid then 
+        local players = {}
+        for name, attStatus in pairs(editRaid.players) do 
+            tinsert(players, name)
         end 
-    end
+        table.sort(players)
 
+        local searchText = string.lower(RaidLogger_Players_SearchBox:GetText())
+
+        for _, name in ipairs(players) do
+            local searchMatch = searchText == "" or string.find(string.lower(name), searchText)
+            if searchMatch then 
+                self:AddRow(name, editRaid.players[name])
+            end 
+        end
+    end 
+    
     HideRowsBeyond(self.visibleRows + 1, self)
 end
 
