@@ -213,7 +213,7 @@ local function LogLoot(who, loot, quantity, ts)
     -- local vStartIndex, vEndIndex, vLinkColor, vItemCode, vItemEnchantCode, vItemSubCode, vUnknownCode, vItemName = strfind(loot, "|c(%x+)|Hitem:(%d+):(%d+):(%d+):(%d+)|h%[([^%]]+)%]|h|r");
     local itemName, itemLink, quality, _, _, itemType, _, _, _, _, vendorPrice = GetItemInfo(loot);
     local startIndex, _ = string.find(itemLink, "item")
-    local _, endIndex = string.find(itemLink, "h[")
+    local _, endIndex = string.find(itemLink, "h%[")
     local itemString = string.sub(itemLink, startIndex, endIndex-1)
 
     if who and quality >= QUALITY_UNCOMMON and not tableTextLookup(IGNORED_ITEMS, vItemName) then
