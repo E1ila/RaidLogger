@@ -1043,7 +1043,7 @@ function RaidLogger_RaidWindow_LootTab:TradedToChanged(row, entry)
     entry.status = 0
     entry.de = 0
     entry.os = 0
-    UIDropDownMenu_SetText(row.playerDropdown, self.value)
+    UIDropDownMenu_SetText(row.playerDropdown, entry.tradedTo)
     RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
     if votingEnabled then 
         row.yesButton:Show()
