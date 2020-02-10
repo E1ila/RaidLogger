@@ -212,9 +212,9 @@ end
 local function LogLoot(who, loot, quantity, ts)
     -- local vStartIndex, vEndIndex, vLinkColor, vItemCode, vItemEnchantCode, vItemSubCode, vUnknownCode, vItemName = strfind(loot, "|c(%x+)|Hitem:(%d+):(%d+):(%d+):(%d+)|h%[([^%]]+)%]|h|r");
     local itemName, itemLink, quality, _, _, itemType, _, _, _, _, vendorPrice = GetItemInfo(loot);
-    local startIndex, _ = string.find(itemLink, "%|H");
-    local _, endIndex = string.find(itemLink, "%|h");
-    local itemString = string.sub(itemLink, startIndex, endIndex);	
+    local startIndex, _ = string.find(itemLink, "item")
+    local _, endIndex = string.find(itemLink, "h[")
+    local itemString = string.sub(itemLink, startIndex, endIndex-1)
 
     if who and quality >= QUALITY_UNCOMMON and not tableTextLookup(IGNORED_ITEMS, vItemName) then
         out("Logged loot: " .. ColorName(who) .. " received " .. itemLink)
@@ -333,6 +333,13 @@ function RaidLogger_Commands(msg)
     elseif  "SEND" == cmd then
         if arg1 and string.len(arg1) > 0 then
             RaidLogger:Post(1, arg1)
+        else
+            err("Missing sync test text!")
+        end
+    elseif  "RESEND" == cmd then
+        if arg1 and string.len(arg1) > 0 then
+            local entry = RaidLoggerStore.activeRaid.loot[tonumber(arg1)]
+            RaidLogger:Post(1, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx)
         else
             err("Missing sync test text!")
         end
