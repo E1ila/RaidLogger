@@ -9,7 +9,7 @@ local VERSION = 1.6
 local MIN_RAID_PLAYERS = 2
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
-local ADDON_PREFIX = "ZE2okI8Vx5H72L"
+local ADDON_PREFIX = "RaidLogger"
 
 local TRACKED_INSTANCES = {
     [1] = "The Molten Core",
@@ -79,11 +79,8 @@ local function err(text)
 end 
 
 local function removeRealmName(playerRealmName) 
-	local fixedRealmName = gRealmName:gsub("%s+", "")
-	if string.match(playerRealmName, fixedRealmName) then 
-		return string.gsub(playerRealmName, "-"..fixedRealmName, "") 
-	end 
-	return playerRealmName
+    local nameParts = {_G.string.split("-", playerRealmName)}
+	return nameParts[1]
 end 
 
 local function splitCsv(text, sep) 
@@ -590,9 +587,10 @@ function RaidLoggerFrame:OnAddonLoaded()
     RaidLogger_RaidWindow_Buttons_LootTab:Clicked()
 
     if RaidLoggerStore.sync then 
-        out("Registring for sync on "..RaidLoggerStore.sync)
         successfulRequest = C_ChatInfo.RegisterAddonMessagePrefix(ADDON_PREFIX..RaidLoggerStore.sync)
-        if not successfulRequest then 
+        if successfulRequest then 
+            out("Registered for sync on "..RaidLoggerStore.sync)
+        else 
             printerr("Failed registering to message prefix!")
         end 
     end 
@@ -624,31 +622,27 @@ function RaidLoggerFrame:OnEvent(event, arg1, ...)
         if arg1 == ADDON_NAME then 
             self:OnAddonLoaded()
         end 
-    else
-        -- out("|c44FFFFFF"..event.." event")
-        if event == "RAID_INSTANCE_WELCOME" or event == "ZONE_CHANGED_NEW_AREA" then
-            if InTrackedInstance() and GetNumRaidMembers() >= MIN_RAID_PLAYERS then
-                RaidLogger:UpdateRaid()
-            end
-        elseif event == "CHAT_MSG_LOOT" then
-            local zone = InTrackedInstance()
-            if zone and RaidLoggerStore.activeRaid then
-                RaidLogger:ParseLootMessage(arg1, zone)
-            end
-        elseif event == "RAID_ROSTER_UPDATE" or event == "GROUP_ROSTER_UPDATE" or event == "ENCOUNTER_END" then
-            if RaidLoggerStore and RaidLoggerStore.activeRaid then
-                if GetNumRaidMembers() > 1 then
-                    RaidLogger:UpdateRaid()
-                else
-                    EndRaidReminder();
-                end
-            end
-        elseif event == "CHAT_MSG_ADDON" and RaidLoggerStore.sync then
-            out("CHAT_MSG_ADDON "..arg1)
-            if arg1 == ADDON_PREFIX..RaidLoggerStore.sync then 
-                RaidLogger:OnAddonMessage(...)
-            end 
+    elseif event == "RAID_INSTANCE_WELCOME" or event == "ZONE_CHANGED_NEW_AREA" then
+        if InTrackedInstance() and GetNumRaidMembers() >= MIN_RAID_PLAYERS then
+            RaidLogger:UpdateRaid()
         end
+    elseif event == "CHAT_MSG_LOOT" then
+        local zone = InTrackedInstance()
+        if zone and RaidLoggerStore.activeRaid then
+            RaidLogger:ParseLootMessage(arg1, zone)
+        end
+    elseif event == "RAID_ROSTER_UPDATE" or event == "GROUP_ROSTER_UPDATE" or event == "ENCOUNTER_END" then
+        if RaidLoggerStore and RaidLoggerStore.activeRaid then
+            if GetNumRaidMembers() > 1 then
+                RaidLogger:UpdateRaid()
+            else
+                EndRaidReminder();
+            end
+        end
+    elseif event == "CHAT_MSG_ADDON" and RaidLoggerStore.sync then
+        if arg1 == ADDON_PREFIX..RaidLoggerStore.sync then 
+            RaidLogger:OnAddonMessage(...)
+        end 
     end
 end
 
