@@ -54,6 +54,8 @@ local QUALITY_EPIC = 4 -- purple
 local QUALITY_LEGENDARY = 5 -- orange
 
 local SYNC_LOOT = "loot"
+local SYNC_COUNSIL = "counsil"
+local SYNC_COUNSIL_WHO = "counsil?"
 
 local BUFF_CHECK_SECONDS = 60 
 
@@ -61,6 +63,8 @@ local lastBuffCheck = 0
 local editRaid = nil 
 local editRaidIndex = nil
 local debugMode = true
+local lastCounsilSync = 0
+
 RaidLoggerDelayedMessages = {}
 RaidLoggerPendingLoot = {}
 
@@ -493,7 +497,21 @@ function RaidLogger:SetLootCouncil(player)
         out("Adding " .. ColorName(player) .. " to loot council.")
         RaidLoggerStore.council[player] = true  
     end 
+    self:AnnounceLootCounsil()
 end
+
+function RaidLogger:PackLootCounsil() 
+    local names = {}
+    for name, _ in pairs(RaidLoggerStore.council) do 
+        tinsert(names, name)
+    end 
+    table.sort(names)
+    return table.concat(names, "|")
+end 
+
+function RaidLogger:AnnounceLootCounsil(packedCounsil) 
+    RaidLogger:Post(0, SYNC_COUNSIL, packedCounsil or self:PackLootCounsil())
+end 
 
 function RaidLogger:LogBenched(player)
     out("Logging bench for " .. ColorName(player))
@@ -622,6 +640,25 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
             out("Received loot sync, but no active raid - ignoring")
         end 
     end 
+
+    if parts[1] == SYNC_COUNSIL then 
+        local currentCounsil = self:PackLootCounsil()
+        if currentCounsil == parts[2] then return end -- counsil not changed
+
+        RaidLoggerStore.council = {}
+        local names = {_G.string.split("|", parts[2])}
+        for _, name in names do 
+            RaidLoggerStore.council[name] = true 
+        end 
+        out("Received new loot counsil from "..sender..": "..parts[2])
+    end
+
+    if parts[1] == SYNC_COUNSIL_WHO then 
+        local currentCounsil = self:PackLootCounsil()
+        if #currentCounsil > 0 then 
+            self:AnnounceLootCounsil(currentCounsil)
+        end 
+    end
 end 
 
 function RaidLogger:Post(delaySeconds, ...) 
@@ -689,7 +726,9 @@ function RaidLoggerFrame:OnUpdate()
     if RaidLoggerPendingLoot and #RaidLoggerPendingLoot then 
         local params = RaidLoggerPendingLoot[1]
         table.remove(RaidLoggerPendingLoot, 1)
-        LogLoot(params[1], params[2], params[3], params[4])
+        if params then 
+            LogLoot(params[1], params[2], params[3], params[4])
+        end 
     end 
 end 
 
