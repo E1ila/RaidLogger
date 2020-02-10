@@ -54,8 +54,8 @@ local QUALITY_EPIC = 4 -- purple
 local QUALITY_LEGENDARY = 5 -- orange
 
 local SYNC_LOOT = "loot"
-local SYNC_COUNSIL = "counsil"
-local SYNC_COUNSIL_WHO = "counsil?"
+local SYNC_COUNCIL = "council"
+local SYNC_COUNCIL_WHO = "council?"
 local SYNC_VOTE = "vote"
 
 local BUFF_CHECK_SECONDS = 60 
@@ -64,7 +64,7 @@ local lastBuffCheck = 0
 local editRaid = nil 
 local editRaidIndex = nil
 local debugMode = true
-local lastCounsilSync = 0
+local lastCouncilSync = 0
 
 RaidLoggerDelayedMessages = {}
 RaidLoggerPendingLoot = {}
@@ -325,7 +325,7 @@ function RaidLogger_Commands(msg)
         else 
             out("Incorrect usage of command, write |cff00ff00/rl log [ITEM_LINK] [RECEIVER_NAME]")
         end 
-    elseif  "COUNSIL" == cmd then
+    elseif  "COUNCIL" == cmd then
         if arg1 and string.len(arg1) > 0 then
             if arg1 == "disable" then
                 out("Loot council disabled.");
@@ -502,10 +502,10 @@ function RaidLogger:SetLootCouncil(player)
         out("Adding " .. ColorName(player) .. " to loot council.")
         RaidLoggerStore.council[player] = true  
     end 
-    self:AnnounceLootCounsil()
+    self:AnnounceLootCouncil()
 end
 
-function RaidLogger:PackLootCounsil() 
+function RaidLogger:PackLootCouncil() 
     if not RaidLoggerStore.council then return "" end 
     local names = {}
     for name, _ in pairs(RaidLoggerStore.council) do 
@@ -515,8 +515,8 @@ function RaidLogger:PackLootCounsil()
     return table.concat(names, "|")
 end 
 
-function RaidLogger:AnnounceLootCounsil(packedCounsil) 
-    RaidLogger:Post(0, nil, SYNC_COUNSIL, packedCounsil or self:PackLootCounsil())
+function RaidLogger:AnnounceLootCouncil(packedCouncil) 
+    RaidLogger:Post(0, nil, SYNC_COUNCIL, packedCouncil or self:PackLootCouncil())
 end 
 
 function RaidLogger:LogBenched(player)
@@ -647,27 +647,27 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         end 
     end 
 
-    if parts[1] == SYNC_COUNSIL then 
-        local currentCounsil = self:PackLootCounsil()
-        if currentCounsil == parts[2] then return end -- counsil not changed
+    if parts[1] == SYNC_COUNCIL then 
+        local currentCouncil = self:PackLootCouncil()
+        if currentCouncil == parts[2] then return end -- council not changed
 
         if not parts[2] or #parts[2] == 0 then 
             RaidLoggerStore.council = nil 
-            out("Received loot counsil disable from "..sender)
+            out("Received loot council disable from "..sender)
         else 
             RaidLoggerStore.council = {}
             local names = {_G.string.split("|", parts[2])}
             for _, name in pairs(names) do 
                 RaidLoggerStore.council[name] = true 
             end 
-            out("Received new loot counsil from "..sender..": "..parts[2])
+            out("Received new loot council from "..sender..": "..parts[2])
         end 
     end
 
-    if parts[1] == SYNC_COUNSIL_WHO then 
-        local currentCounsil = self:PackLootCounsil()
-        if #currentCounsil > 0 then 
-            self:AnnounceLootCounsil(currentCounsil)
+    if parts[1] == SYNC_COUNCIL_WHO then 
+        local currentCouncil = self:PackLootCouncil()
+        if #currentCouncil > 0 then 
+            self:AnnounceLootCouncil(currentCouncil)
         end 
     end
 
@@ -718,7 +718,7 @@ function RaidLogger:CheckVotes(entry)
     local sum = 0
     local max = 0
     local veto = {}
-    for name, enabled in RaidLoggerStore.counsil do 
+    for name, enabled in RaidLoggerStore.council do 
         if enabled and raidPlayers[name] then
             max = max + 1
             if entry.votes[name] == 1 then 
@@ -775,7 +775,7 @@ function RaidLoggerFrame:OnAddonLoaded()
         successfulRequest = C_ChatInfo.RegisterAddonMessagePrefix(ADDON_PREFIX..RaidLoggerStore.sync)
         if successfulRequest then 
             out("Registered for sync on "..RaidLoggerStore.sync)
-            RaidLogger:Post(5, nil, SYNC_COUNSIL_WHO)
+            RaidLogger:Post(5, nil, SYNC_COUNCIL_WHO)
         else 
             printerr("Failed registering to message prefix!")
         end 
@@ -1177,7 +1177,7 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
         table.sort(players)
 
         local searchText = string.lower(RaidLogger_Loot_SearchBox:GetText())
-        local votingEnabled = not editRaid.endTime and RaidLoggerStore.counsil and RaidLoggerStore.counsil[UnitName("player")]
+        local votingEnabled = not editRaid.endTime and RaidLoggerStore.council and RaidLoggerStore.council[UnitName("player")]
 
         for i = #editRaid.loot, 1, -1 do
             local entry = editRaid.loot[i]
