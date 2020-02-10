@@ -701,9 +701,10 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
 end 
 
 function RaidLogger:Post(delaySeconds, toWho, ...) 
+    RaidLoggerPostParams = {...}
     tinsert(RaidLoggerDelayedMessages, {
         ["time"] = time() + delaySeconds,
-        ["msg"] = table.concat({...}, ","),
+        ["msg"] = table.concat(RaidLoggerPostParams, ","),
         ["to"] = toWho,
     })
 end 
@@ -1115,13 +1116,13 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid, voting
     row.yesButton:SetScript("OnClick", function(self) 
         setButtonState(1, "agree", self)
         setButtonState(0, "disagree", row.noButton)
-        RaidLogger:Post(1, SYNC_VOTE, nil, entry.idx, entry.itemString, 1)
+        RaidLogger:Post(1, nil, SYNC_VOTE, entry.idx, entry.itemString, 1)
         RaidLogger:CheckVotes(entry)
     end)
     row.noButton:SetScript("OnClick", function(self) 
         setButtonState(1, "disagree", self)
         setButtonState(0, "agree", row.yesButton)
-        RaidLogger:Post(1, SYNC_VOTE, nil, entry.idx, entry.itemString, 0)
+        RaidLogger:Post(1, nil, SYNC_VOTE, entry.idx, entry.itemString, 0)
         RaidLogger:CheckVotes(entry)
     end)
 
