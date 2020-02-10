@@ -60,7 +60,7 @@ local BUFF_CHECK_SECONDS = 60
 local lastBuffCheck = 0
 local editRaid = nil 
 local editRaidIndex = nil
-local debugMode = false
+local debugMode = true
 RaidLoggerDelayedMessages = {}
 
 RaidLoggerStore = {
@@ -211,7 +211,7 @@ end
 -- loot can be itemId
 local function LogLoot(who, loot, quantity)
     -- local vStartIndex, vEndIndex, vLinkColor, vItemCode, vItemEnchantCode, vItemSubCode, vUnknownCode, vItemName = strfind(loot, "|c(%x+)|Hitem:(%d+):(%d+):(%d+):(%d+)|h%[([^%]]+)%]|h|r");
-	local itemName, itemLink, quality, _, _, itemType, _, _, _, _, vendorPrice = GetItemInfo(loot);
+    local itemName, itemLink, quality, _, _, itemType, _, _, _, _, vendorPrice = GetItemInfo(loot);
     local linkParts = {_G.string.split(":", itemLink)}
     local itemId = linkParts[2]
 
@@ -655,7 +655,7 @@ function RaidLoggerFrame:OnUpdate()
         newStack = {}
         for _, meta in ipairs(RaidLoggerDelayedMessages) do 
             if meta.time <= time() then 
-                out("SYNC OUT - "..meta.msg)
+                debug("SYNC OUT - "..meta.msg)
                 C_ChatInfo.SendAddonMessage(ADDON_PREFIX..RaidLoggerStore.sync, meta.msg, "RAID")
             else 
                 tinsert(newStack, meta)
@@ -1137,7 +1137,7 @@ function RaidLogger_RaidWindow_PlayersTab:Refresh()
             end 
         end
     end 
-    
+
     HideRowsBeyond(self.visibleRows + 1, self)
 end
 
