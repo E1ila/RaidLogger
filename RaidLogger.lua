@@ -56,6 +56,7 @@ local QUALITY_LEGENDARY = 5 -- orange
 local SYNC_LOOT = "loot"
 local SYNC_COUNSIL = "counsil"
 local SYNC_COUNSIL_WHO = "counsil?"
+local SYNC_VOTE = "vote"
 
 local BUFF_CHECK_SECONDS = 60 
 
@@ -669,6 +670,32 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
             self:AnnounceLootCounsil(currentCounsil)
         end 
     end
+
+    if parts[1] == SYNC_VOTE then 
+        if not RaidLoggerStore.activeRaid then 
+            out("Couldn't set vote, no active raid")
+            return 
+        end 
+        local idx = tonumber(parts[2])
+        if #RaidLoggerStore.activeRaid.loot < idx then 
+            out("Couldn't set vote, loot #"..idx.." is missing")
+            return 
+        end 
+        local entry = RaidLoggerStore.activeRaid.loot[idx]
+        if entry.itemString ~= parts[3] then 
+            out("Wrong item at index "..idx..", expected "..parts[3].." but got "..entry.itemString.." - ignoring vote")
+            return 
+        end 
+        
+        if entry.votes[sender] == tonumber(parts[4]) then return end -- vote already recorded
+
+        entry.votes[sender] = tonumber(parts[4])
+        local voteStr = "|cffff0000NO|r"
+        if entry.votes[sender] then voteStr = "|cff00ff00YES|r" end 
+        out(sender.." voted "..voteStr.." to give "..entry.link.." to "..(entry.tradedTo or entry.player))
+
+        self:CheckVotes(entry)
+    end 
 end 
 
 function RaidLogger:Post(delaySeconds, toWho, ...) 
@@ -677,6 +704,43 @@ function RaidLogger:Post(delaySeconds, toWho, ...)
         ["msg"] = table.concat({...}, ","),
         ["to"] = toWho,
     })
+end 
+
+function RaidLogger:CheckVotes(entry) 
+    local raidPlayers = {}
+    for i = 1, GetNumGroupMembers() do 
+        if UnitIsConnected("raid"..i) then 
+            local name = UnitName("raid"..i)
+            raidPlayers[name] = true 
+        end 
+    end 
+
+    local sum = 0, max = 0, veto = {}
+    for name, enabled in RaidLoggerStore.counsil do 
+        if enabled and raidPlayers[name] then
+            max = max + 1
+            if entry.votes[name] == 1 then 
+                sum = sum + 1
+            elseif entry.votes[name] == 0 then 
+                tinsert(veto, name)
+            end 
+        end 
+    end 
+    if sum > max then 
+        out("Very strange, got more votes than max possible for "..entry.link)
+    end 
+    if sum >= max and entry.status ~= 1 then 
+        entry.status = 1
+        out("Loot "..entry.link.." AGREED to be given to "..(entry.tradedTo or entry.player).." with "..sum.." / "..max.." votes.")
+    elseif #veto > 0 then 
+        entry.status = -1
+    end 
+
+    if editRaid and not editRaid.endTime then 
+        -- update UI
+        local row = RaidLogger_RaidWindow_LootTab.rows[entry.idx]
+        RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
+    end 
 end 
 
 
@@ -915,7 +979,25 @@ end
 
 -- loot tab ----------
 
-function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid) 
+local function RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
+    local statusImage = "question"
+    local statusTooltip = "Undecided"
+    if entry.status == 1 then 
+        statusImage = "check"
+        statusTooltip = "Approved"
+    elseif entry.status == -1 then 
+        statusImage = "cross"
+        statusTooltip = "Denied"
+    end 
+    row.statusImage:SetTexture("Interface\\AddOns\\RaidLogger\\assets\\"..statusImage)
+    row.statusFrame:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(row.statusFrame, "ANCHOR_LEFT")
+        GameTooltip:SetText(statusTooltip)
+        GameTooltip:Show()
+    end);
+end 
+
+function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid, votingEnabled) 
 	self.visibleRows = self.visibleRows + 1
 
     local existingRow = self.rows[self.visibleRows]
@@ -949,29 +1031,11 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
         row.statusImage = row.root:CreateTexture();
         row.statusImage:SetAllPoints(row.statusFrame)
     end 
-    
-    local function updateStatusImage(row, entry)
-        local statusImage = "question"
-        local statusTooltip = "Undecided"
-        if entry.status == 1 then 
-            statusImage = "check"
-            statusTooltip = "Approved"
-        elseif entry.status == -1 then 
-            statusImage = "cross"
-            statusTooltip = "Denied"
-        end 
-        row.statusImage:SetTexture("Interface\\AddOns\\RaidLogger\\assets\\"..statusImage)
-        row.statusFrame:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(row.statusFrame, "ANCHOR_LEFT")
-            GameTooltip:SetText(statusTooltip)
-            GameTooltip:Show()
-        end);
-    end 
 
     if activeRaid then 
         playerDropdownOffX = -10
         if entry.tradedTo then 
-            updateStatusImage(row, entry)
+            RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
         else 
             row.statusImage:SetTexture(nil)
         end 
@@ -1000,7 +1064,7 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
         entry.de = 0
         entry.os = 0
         UIDropDownMenu_SetText(row.playerDropdown, self.value)
-        updateStatusImage(row, entry)
+        RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
     end
     UIDropDownMenu_Initialize(row.playerDropdown, function (frame, level, menuList)
         local info = UIDropDownMenu_CreateInfo()
@@ -1047,13 +1111,17 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
     row.yesButton:SetScript("OnClick", function(self) 
         setButtonState(1, "agree", self)
         setButtonState(0, "disagree", row.noButton)
+        RaidLogger:Post(1, SYNC_VOTE, entry.idx, itemString, 1)
+        RaidLogger:CheckVotes(entry)
     end)
     row.noButton:SetScript("OnClick", function(self) 
         setButtonState(1, "disagree", self)
         setButtonState(0, "agree", row.yesButton)
+        RaidLogger:Post(1, SYNC_VOTE, entry.idx, itemString, 0)
+        RaidLogger:CheckVotes(entry)
     end)
 
-    if activeRaid then 
+    if votingEnabled then 
         row.yesButton:Show()
         row.noButton:Show()
     else 
@@ -1107,6 +1175,7 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
         table.sort(players)
 
         local searchText = string.lower(RaidLogger_Loot_SearchBox:GetText())
+        local votingEnabled = not editRaid.endTime and RaidLoggerStore.counsil and RaidLoggerStore.counsil[UnitName("player")]
 
         for i = #editRaid.loot, 1, -1 do
             local entry = editRaid.loot[i]
@@ -1114,7 +1183,7 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
             local epicItem = entry.quality >= 0
             local searchMatch = searchText == "" or string.find(string.lower(entry.item), searchText)
             if (epicItem or blueRecipe) and searchMatch then 
-                self:AddRow(players, entry, not editRaid.endTime)
+                self:AddRow(players, entry, not editRaid.endTime, votingEnabled)
             end 
         end
     end
