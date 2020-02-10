@@ -715,7 +715,9 @@ function RaidLogger:CheckVotes(entry)
         end 
     end 
 
-    local sum = 0, max = 0, veto = {}
+    local sum = 0
+    local max = 0
+    local veto = {}
     for name, enabled in RaidLoggerStore.counsil do 
         if enabled and raidPlayers[name] then
             max = max + 1
@@ -979,7 +981,7 @@ end
 
 -- loot tab ----------
 
-local function RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
+function RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
     local statusImage = "question"
     local statusTooltip = "Undecided"
     if entry.status == 1 then 
