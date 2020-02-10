@@ -53,7 +53,7 @@ local QUALITY_RARE = 3 -- blue
 local QUALITY_EPIC = 4 -- purple
 local QUALITY_LEGENDARY = 5 -- orange
 
-local SYNC_LOOT = "loot"
+local SYNC_LOOT = "LOOT"
 
 local BUFF_CHECK_SECONDS = 60 
 
@@ -566,7 +566,7 @@ end
 
 function RaidLogger:OnAddonMessage(text, channel, sender, target)
     sender = removeRealmName(sender)
-    if sender == UnitName("player") then return end 
+    if string.upper(sender) == string.upper(UnitName("player")) then return end 
     local parts = splitCsv(text)
     debug("SYNC IN - ["..sender.."]: "..text)
 
