@@ -362,7 +362,9 @@ function RaidLogger_Commands(msg)
             local entry = RaidLoggerStore.activeRaid.loot[tonumber(arg1)]
             RaidLogger:Post(1, nil, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx)
         else
-            err("Missing sync test text!")
+            for i, entry in ipairs(RaidLoggerStore.activeRaid.loot) do 
+                RaidLogger:Post(i, nil, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx)
+            end 
         end
     elseif  "BENCH" == cmd or "B" == cmd then
         if arg1 and string.len(arg1) > 0 then
@@ -703,7 +705,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
 
         entry.votes[sender] = tonumber(parts[4])
         local voteStr = "|cffff0000NO|r"
-        if entry.votes[sender] then voteStr = "|cff00ff00YES|r" end 
+        if entry.votes[sender] == 1 then voteStr = "|cff00ff00YES|r" end 
         out(sender.." voted "..voteStr.." to give "..entry.link.." to "..(entry.tradedTo or entry.player))
 
         self:CheckVotes(entry)
@@ -752,7 +754,7 @@ function RaidLogger:CheckVotes(entry)
 
     if editRaid and not editRaid.endTime then 
         -- update UI
-        local row = RaidLogger_RaidWindow_LootTab.rows[entry.idx]
+        local row = RaidLogger_RaidWindow_LootTab.rows[#RaidLogger_RaidWindow_LootTab.rows - entry.idx + 1]
         RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
     end 
 end 
@@ -1125,12 +1127,14 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid, voting
     row.yesButton:SetScript("OnClick", function(self) 
         setButtonState(1, "agree", self)
         setButtonState(0, "disagree", row.noButton)
+        entry.votes[UnitName("player")] = 1
         RaidLogger:Post(1, nil, SYNC_VOTE, entry.idx, entry.itemString, 1)
         RaidLogger:CheckVotes(entry)
     end)
     row.noButton:SetScript("OnClick", function(self) 
         setButtonState(1, "disagree", self)
         setButtonState(0, "agree", row.yesButton)
+        entry.votes[UnitName("player")] = 0
         RaidLogger:Post(1, nil, SYNC_VOTE, entry.idx, entry.itemString, 0)
         RaidLogger:CheckVotes(entry)
     end)
