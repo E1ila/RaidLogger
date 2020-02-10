@@ -504,6 +504,7 @@ function RaidLogger:SetLootCouncil(player)
 end
 
 function RaidLogger:PackLootCounsil() 
+    if not RaidLoggerStore.council then return "" end 
     local names = {}
     for name, _ in pairs(RaidLoggerStore.council) do 
         tinsert(names, name)
