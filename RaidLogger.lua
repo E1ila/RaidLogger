@@ -265,7 +265,8 @@ function RaidLogger:ParseLootMessage(msg, zone)
 end
 
 function RaidLogger_Commands(msg)
-    local _, _, cmd, arg1 = string.find(string.upper(msg), "([%w]+)%s*(.*)$");
+    local _, _, cmd, arg1 = string.find(msg, "([%w]+)%s*(.*)$");
+    cmd = string.upper(cmd)
     -- out("cmd " .. cmd .. " / arg1 " .. arg1)
     if not cmd then
         RaidLogger:ChooseLastRaid()
@@ -285,7 +286,7 @@ function RaidLogger_Commands(msg)
         out("  |cFF00FF00/rl end|r - save and close raid, do this when raid ended.")
         out("  |cFF00FF00/rl p|r - print active raid, if any.")
         out("  |cFF00FF00/rl |cFF00ff95start|r - start logging a raid or update existing one.")
-    elseif  "log" == cmd then
+    elseif  "LOG" == cmd then
         if not RaidLoggerStore.activeRaid then 
             out("No active raid!")
             return 
@@ -325,7 +326,7 @@ function RaidLogger_Commands(msg)
         else
             err("Missing sync password!")
         end
-    elseif  "TEST" == cmd then
+    elseif  "SEND" == cmd then
         if arg1 and string.len(arg1) > 0 then
             RaidLogger:Post(1, arg1)
         else
@@ -566,7 +567,7 @@ end
 
 function RaidLogger:OnAddonMessage(text, channel, sender, target)
     sender = removeRealmName(sender)
-    if string.upper(sender) == string.upper(UnitName("player")) then return end 
+    if sender == UnitName("player") then return end 
     local parts = splitCsv(text)
     debug("SYNC IN - ["..sender.."]: "..text)
 
