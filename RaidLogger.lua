@@ -655,7 +655,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         else 
             RaidLoggerStore.council = {}
             local names = {_G.string.split("|", parts[2])}
-            for _, name in names do 
+            for _, name in pairs(names) do 
                 RaidLoggerStore.council[name] = true 
             end 
             out("Received new loot counsil from "..sender..": "..parts[2])
