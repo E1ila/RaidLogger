@@ -490,6 +490,9 @@ function RaidLogger:EndRaid()
 end
 
 function RaidLogger:SetLootCouncil(player)
+    if not RaidLoggerStore.council then 
+        RaidLoggerStore.council = {}
+    end 
     if RaidLoggerStore.council[player] then
         out("Removing " .. ColorName(player) .. " from loot council.")
         RaidLoggerStore.council[player] = nil 
@@ -645,12 +648,17 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         local currentCounsil = self:PackLootCounsil()
         if currentCounsil == parts[2] then return end -- counsil not changed
 
-        RaidLoggerStore.council = {}
-        local names = {_G.string.split("|", parts[2])}
-        for _, name in names do 
-            RaidLoggerStore.council[name] = true 
+        if #parts[2] == 0 then 
+            RaidLoggerStore.council = nil 
+            out("Received loot counsil disable from "..sender)
+        else 
+            RaidLoggerStore.council = {}
+            local names = {_G.string.split("|", parts[2])}
+            for _, name in names do 
+                RaidLoggerStore.council[name] = true 
+            end 
+            out("Received new loot counsil from "..sender..": "..parts[2])
         end 
-        out("Received new loot counsil from "..sender..": "..parts[2])
     end
 
     if parts[1] == SYNC_COUNSIL_WHO then 
