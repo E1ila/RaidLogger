@@ -57,6 +57,7 @@ local SYNC_LOOT = "loot"
 local SYNC_COUNCIL = "council"
 local SYNC_COUNCIL_WHO = "council?"
 local SYNC_VOTE = "vote"
+local SYNC_SUGGEST = "suggest"
 
 local BUFF_CHECK_SECONDS = 60 
 
@@ -631,6 +632,26 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
     local parts = splitCsv(text)
     debug("SYNC IN - ["..sender.."]: "..text)
 
+    local function VerifyLoot(parts) 
+        if not RaidLoggerStore.activeRaid then 
+            out("Couldn't set vote, no active raid")
+            return false
+        end 
+        local idx = tonumber(parts[2])
+        if #RaidLoggerStore.activeRaid.loot < idx then 
+            out("Couldn't set vote, loot #"..idx.." is missing")
+            return false
+        end 
+        local entry = RaidLoggerStore.activeRaid.loot[idx]
+        if entry.itemString ~= parts[3] then 
+            __p1 = entry.itemString
+            __p2 = parts[3]
+            out("Wrong item at index "..idx..", expected "..parts[3].." but got "..entry.itemString.." - ignoring vote")
+            return false
+        end 
+        return true 
+    end 
+
     if parts[1] == SYNC_LOOT then 
         -- 2-receiver, 3-itemString, 4-quantity, 5-ts, 6-index
         if RaidLoggerStore.activeRaid then 
@@ -691,22 +712,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
     end
 
     if parts[1] == SYNC_VOTE then 
-        if not RaidLoggerStore.activeRaid then 
-            out("Couldn't set vote, no active raid")
-            return 
-        end 
-        local idx = tonumber(parts[2])
-        if #RaidLoggerStore.activeRaid.loot < idx then 
-            out("Couldn't set vote, loot #"..idx.." is missing")
-            return 
-        end 
-        local entry = RaidLoggerStore.activeRaid.loot[idx]
-        if entry.itemString ~= parts[3] then 
-            __p1 = entry.itemString
-            __p2 = parts[3]
-            out("Wrong item at index "..idx..", expected "..parts[3].." but got "..entry.itemString.." - ignoring vote")
-            return 
-        end 
+        if not VerifyLoot(parts) then return end 
         
         if entry.votes[sender] == tonumber(parts[4]) then return end -- vote already recorded
 
@@ -716,6 +722,16 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         out(sender.." voted "..voteStr.." to give "..entry.link.." to "..entry.tradedTo)
 
         self:CheckVotes(entry)
+    end 
+
+    if parts[1] == SYNC_SUGGEST then 
+        if not VerifyLoot(parts) then return end 
+
+        if entry.tradedTo == parts[4] then return end -- tradeTo already recorded
+
+        entry.tradedTo = parts[4]
+        local row = RaidLogger_RaidWindow_LootTab.rows[#RaidLogger_RaidWindow_LootTab.rows - entry.idx + 1]
+        RaidLogger_RaidWindow_LootTab:TradedToChanged(row, entry) 
     end 
 end 
 
@@ -1020,6 +1036,19 @@ function RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
     end);
 end 
 
+function RaidLogger_RaidWindow_LootTab:TradedToChanged(row, entry) 
+    entry.votes = {}
+    entry.status = 0
+    entry.de = 0
+    entry.os = 0
+    UIDropDownMenu_SetText(row.playerDropdown, self.value)
+    RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
+    if votingEnabled then 
+        row.yesButton:Show()
+        row.noButton:Show()
+    end 
+end 
+
 function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid, votingEnabled) 
 	self.visibleRows = self.visibleRows + 1
 
@@ -1082,16 +1111,8 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid, voting
     end 
     local function Dropdown_OnClick(self)
         entry.tradedTo = self.value 
-        entry.votes = {}
-        entry.status = 0
-        entry.de = 0
-        entry.os = 0
-        UIDropDownMenu_SetText(row.playerDropdown, self.value)
-        RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
-        if votingEnabled then 
-            row.yesButton:Show()
-            row.noButton:Show()
-        end 
+        RaidLogger_RaidWindow_LootTab:TradedToChanged(row, entry)
+        RaidLogger:Post(1, nil, SYNC_SUGGEST, entry.idx, entry.itemString, entry.tradedTo)
     end
     UIDropDownMenu_Initialize(row.playerDropdown, function (frame, level, menuList)
         local info = UIDropDownMenu_CreateInfo()
