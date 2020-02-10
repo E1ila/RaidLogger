@@ -66,6 +66,7 @@ local editRaid = nil
 local editRaidIndex = nil
 local debugMode = true
 local lastCouncilSync = 0
+local votingEnabled = false 
 
 RaidLoggerDelayedMessages = {}
 RaidLoggerPendingLoot = {}
@@ -734,6 +735,8 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         entry.tradedTo = parts[4]
         local row = RaidLogger_RaidWindow_LootTab.rows[#RaidLogger_RaidWindow_LootTab.rows - entry.idx + 1]
         RaidLogger_RaidWindow_LootTab:TradedToChanged(row, entry) 
+
+        out(sender.." suggests to give "..entry.link.." to "..entry.tradedTo)
     end 
 end 
 
@@ -1051,7 +1054,7 @@ function RaidLogger_RaidWindow_LootTab:TradedToChanged(row, entry)
     end 
 end 
 
-function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid, votingEnabled) 
+function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid) 
 	self.visibleRows = self.visibleRows + 1
 
     local existingRow = self.rows[self.visibleRows]
@@ -1228,7 +1231,7 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
         table.sort(players)
 
         local searchText = string.lower(RaidLogger_Loot_SearchBox:GetText())
-        local votingEnabled = not editRaid.endTime and RaidLoggerStore.council and RaidLoggerStore.council[UnitName("player")]
+        votingEnabled = not editRaid.endTime and RaidLoggerStore.council and RaidLoggerStore.council[UnitName("player")]
 
         for i = #editRaid.loot, 1, -1 do
             local entry = editRaid.loot[i]
