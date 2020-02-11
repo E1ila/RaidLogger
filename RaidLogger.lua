@@ -271,7 +271,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, idx)
             status = status or 0,
             idx = idx or RaidLoggerStore.activeRaid.lootCount,
             itemString = itemString,
-            tradedTo = tradedTo or nil,
+            tradedTo = tradedTo,
 
         }
         table.insert(RaidLoggerStore.activeRaid.loot, entry)
@@ -388,6 +388,7 @@ function RaidLogger_Commands(msg)
         end
     elseif  "CLEAR" == cmd then
         RaidLoggerStore.activeRaid.loot = {}
+        RaidLoggerStore.activeRaid.lootCount = 0
         RaidLogger_RaidWindow_LootTab:Refresh()
     elseif  "BENCH" == cmd or "B" == cmd then
         if arg1 and string.len(arg1) > 0 then
@@ -671,11 +672,11 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
     end 
 
     if parts[1] == SYNC_LOOT then 
-        -- 2-receiver, 3-itemString, 4-quantity, 5-ts, 6-index, 7-tradedTo, 8-votes, 9-status
+        -- 2-receiver, 3-itemString, 4-quantity, 5-ts, 6-index, 7-tradedTo, 8-status, 9-votes
         if RaidLoggerStore.activeRaid then 
             local t = time() - 10
-            local status = tonumber(parts[9])
-            local _votes = parts[8]
+            local _votes = parts[9]
+            local status = tonumber(parts[8])
             local tradedTo = parts[7]
             local idx = tonumber(parts[6])
             local ts = tonumber(parts[5])
@@ -699,7 +700,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                 end 
             end
             if shouldAdd then 
-                if tradedTo == "" then tradedTo = nil end 
+                if tradedTo == "_" then tradedTo = nil end 
                 local votes = {}
                 if _votes and #_votes > 0 then 
                     local votesParts = {_G.string.split("|", _votes)}
@@ -827,7 +828,7 @@ function RaidLogger:PostLootEntry(entry, delaySeconds, sendTo)
     for name, vote in pairs(entry.votes) do 
         tinsert(votes, name.."-"..vote)
     end 
-    RaidLogger:Post(delaySeconds, sendTo, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx, entry.tradedTo or "", table.concat(votes, "|"), entry.status)
+    RaidLogger:Post(delaySeconds, sendTo, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx, entry.tradedTo or "_", entry.status, table.concat(votes, "|"))
 end 
 
 
