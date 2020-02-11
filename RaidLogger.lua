@@ -21,7 +21,7 @@ local TRACKED_INSTANCES = {
     [5] = "Ahn'Qiraj",
     [6] = "Ruins of Ahn'Qiraj",
     [7] = "Naxxramas",
-    -- [8] = "Ragefire Chasm",
+    [8] = "Ragefire Chasm",
 }
 
 local CLASS_COLOR = {
@@ -1164,13 +1164,13 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
         local info = UIDropDownMenu_CreateInfo()
         info.func = Dropdown_OnClick
         for _, name in ipairs(players) do 
-            info.text, info.checked = name, name == entry.tradedTo
+            info.text, info.checked = name, name == (entry.tradedTo or entry.player)
             UIDropDownMenu_AddButton(info)
         end 
     end)
     row.playerDropdown:ClearAllPoints()
     row.playerDropdown:SetPoint("LEFT", row.statusImage, "RIGHT", playerDropdownOffX, -2)
-    UIDropDownMenu_SetText(row.playerDropdown, entry.tradedTo or "")
+    UIDropDownMenu_SetText(row.playerDropdown, entry.tradedTo or entry.player)
 
 	if not row.label then 
 		row.labelFrame = CreateFrame("FRAME", nil, row.root);		
@@ -1267,7 +1267,7 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
         tinsert(players, DROPDOWN_DISENCHANT_NAME)
         tinsert(players, DROPDOWN_BANK_NAME)
         for name, attStatus in pairs(editRaid.players) do 
-            if attStatus == "a" then tinsert(players, name) end 
+            tinsert(players, name)
         end 
         table.sort(players)
 
