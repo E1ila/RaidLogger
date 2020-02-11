@@ -5,6 +5,9 @@
 -- Time: 18:36
 --
 
+-- TODO: added tradedTo, votes, status to SYNC_LOOT
+-- TODO: set de=1 and bank=1 
+
 local VERSION = 1.6
 local MIN_RAID_PLAYERS = 2
 local ADDON_NAME = "RaidLogger"
@@ -234,7 +237,7 @@ local function EndRaidReminder()
 end
 
 -- loot can be itemId
-local function LogLoot(who, loot, quantity, ts)
+local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status)
     -- local vStartIndex, vEndIndex, vLinkColor, vItemCode, vItemEnchantCode, vItemSubCode, vUnknownCode, vItemName = strfind(loot, "|c(%x+)|Hitem:(%d+):(%d+):(%d+):(%d+)|h%[([^%]]+)%]|h|r");
     local itemName, itemLink, quality, _, _, itemType, _, _, _, _, vendorPrice = GetItemInfo(loot);
 
@@ -261,16 +264,18 @@ local function LogLoot(who, loot, quantity, ts)
             de = 0,
             os = 0,
             bank = 0,
-            votes = {},
-            status = 0,
+            votes = votes or {},
+            status = status or 0,
             idx = RaidLoggerStore.activeRaid.lootCount,
             itemString = itemString,
+            tradedTo = tradedTo or nil,
+
         }
         table.insert(RaidLoggerStore.activeRaid.loot, entry)
         RaidLogger_RaidWindow_LootTab:Refresh()
 
         if not ts then 
-            RaidLogger:Post(1, nil, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx)
+            RaidLogger:PostLootEntry(entry, 1, nil)
         end 
     end
 end
@@ -372,15 +377,15 @@ function RaidLogger_Commands(msg)
     elseif  "RESEND" == cmd then
         if arg1 and string.len(arg1) > 0 then
             local entry = RaidLoggerStore.activeRaid.loot[tonumber(arg1)]
-            RaidLogger:Post(1, nil, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx)
+            RaidLogger:PostLootEntry(entry, 1, nil)
         else
             for i, entry in ipairs(RaidLoggerStore.activeRaid.loot) do 
-                RaidLogger:Post(i, nil, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx)
+                RaidLogger:PostLootEntry(entry, i, nil)
             end 
         end
     elseif  "CLEAR" == cmd then
         RaidLoggerStore.activeRaid.loot = {}
-        RaidLogger_RaidWindow_Buttons_LootTab:Refresh()
+        RaidLogger_RaidWindow_LootTab:Refresh()
     elseif  "BENCH" == cmd or "B" == cmd then
         if arg1 and string.len(arg1) > 0 then
             RaidLogger:LogBenched(FixPlayerName(arg1))
@@ -663,9 +668,12 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
     end 
 
     if parts[1] == SYNC_LOOT then 
-        -- 2-receiver, 3-itemString, 4-quantity, 5-ts, 6-index
+        -- 2-receiver, 3-itemString, 4-quantity, 5-ts, 6-index, 7-tradedTo, 8-votes, 9-status
         if RaidLoggerStore.activeRaid then 
             local t = time() - 10
+            local status = tonumber(parts[9])
+            local _votes = parts[8]
+            local tradedTo = parts[7]
             local idx = tonumber(parts[6])
             local ts = tonumber(parts[5])
             local quantity = tonumber(parts[4])
@@ -688,8 +696,15 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                 end 
             end
             if shouldAdd then 
+                if tradedTo == "" then tradedTo = nil end 
+                local votesParts = {_G.string.split("|", _votes)}
+                local votes = {}
+                for _, vote in ipairs(votesParts) do 
+                    local voteParts = {_G.string.split("-", vote)}
+                    votes[voteParts[1]] = tonumber(voteParts[2])
+                end 
                 debug("who="..who.." itemString="..itemString.." quantity="..quantity.." ts="..ts)
-                LogLoot(who, itemString, quantity, ts)
+                LogLoot(who, itemString, quantity, ts, tradedTo, votes, status)
             end 
         else 
             out("Received loot sync, but no active raid - ignoring")
@@ -800,6 +815,14 @@ function RaidLogger:CheckVotes(entry)
         local row = RaidLogger_RaidWindow_LootTab.rows[#RaidLogger_RaidWindow_LootTab.rows - entry.idx + 1]
         RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
     end 
+end 
+
+function RaidLogger:PostLootEntry(entry, delaySeconds, sendTo)
+    local votes = {}
+    for name, vote in pairs(entry.votes) do 
+        tinsert(votes, name.."-"..vote)
+    end 
+    RaidLogger:Post(delaySeconds, sendTo, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx, entry.tradedTo or "", table.concat(votes, "|"), entry.status)
 end 
 
 
