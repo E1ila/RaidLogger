@@ -16,7 +16,9 @@ When entering a high-end vanilla instance (MC, BWL, ZG, AQ20, AQ40, Naxx) a new 
 
 Every time a player joins the raid, his attendance will be automatically logged.
 
-You can log benched players by typing `/rl bench <PLAYER_NAME>`, he won't be logged as attended, but on a separate benched list.
+If you want to sync with other members in your raid, write `/rl sync <SYNC_PASSWORD>` - your other users should use the same password for everyone to be able to sync.
+
+To determine who's able to vote for loot, write `/rl council <PLAYER_NAME>` for each council member. This will be synced to other members in your sync channel.
 
 When raid is over, type `/rl end` to close and save the raid. For help and a full list of commands, type `/rl h` or `/rl help`.
 
