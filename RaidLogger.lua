@@ -5,7 +5,6 @@
 -- Time: 18:36
 --
 
--- TODO: added tradedTo, votes, status to SYNC_LOOT
 -- TODO: set de=1 and bank=1 
 
 local VERSION = 1.6
@@ -22,7 +21,7 @@ local TRACKED_INSTANCES = {
     [5] = "Ahn'Qiraj",
     [6] = "Ruins of Ahn'Qiraj",
     [7] = "Naxxramas",
-    [8] = "Ragefire Chasm",
+    -- [8] = "Ragefire Chasm",
 }
 
 local CLASS_COLOR = {
@@ -253,10 +252,6 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, idx)
 
     if who and quality >= QUALITY_UNCOMMON and not tableTextLookup(IGNORED_ITEMS, vItemName) then
         out("Logged loot: " .. ColorName(who) .. " received " .. itemLink)
-        RaidLoggerStore.activeRaid.lootCount = RaidLoggerStore.activeRaid.lootCount + 1
-        if idx > RaidLoggerStore.activeRaid.lootCount then 
-            RaidLoggerStore.activeRaid.lootCount = idx
-        end 
         local entry = {
             player = who,
             item = itemName,
@@ -269,7 +264,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, idx)
             bank = 0,
             votes = votes or {},
             status = status or 0,
-            idx = idx or RaidLoggerStore.activeRaid.lootCount,
+            idx = #RaidLoggerStore.activeRaid.loot + 1,
             itemString = itemString,
             tradedTo = tradedTo,
 
@@ -388,7 +383,6 @@ function RaidLogger_Commands(msg)
         end
     elseif  "CLEAR" == cmd then
         RaidLoggerStore.activeRaid.loot = {}
-        RaidLoggerStore.activeRaid.lootCount = 0
         RaidLogger_RaidWindow_LootTab:Refresh()
     elseif  "BENCH" == cmd or "B" == cmd then
         if arg1 and string.len(arg1) > 0 then
@@ -423,29 +417,29 @@ function RaidLogger_Commands(msg)
     elseif  "DE" == cmd then
         if not RaidLoggerStore.activeRaid then
             out("No active raid!")
-        elseif RaidLoggerStore.activeRaid.lootCount == 0 then
+        elseif #RaidLoggerStore.activeRaid.loot == 0 then
             out("No loot logged!")
         else
-            if RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].de == 1 then
-                RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].de = 0
-                out(RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].item .. "|r |cFFaaaa00unmarked|r as disenchanted")
+            if RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].de == 1 then
+                RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].de = 0
+                out(RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].item .. "|r |cFFaaaa00unmarked|r as disenchanted")
             else
-                RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].de = 1
-                out(RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].item .. "|r marked as disenchanted")
+                RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].de = 1
+                out(RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].item .. "|r marked as disenchanted")
             end
         end
     elseif  "OS" == cmd then
         if not RaidLoggerStore.activeRaid then
             out("No active raid!")
-        elseif RaidLoggerStore.activeRaid.lootCount == 0 then
+        elseif #RaidLoggerStore.activeRaid.loot == 0 then
             out("No loot logged!")
         else
-            if RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].os == 1 then
-                RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].os = 0
-                out(RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].item .. "|r |cFFaaaa00unmarked|r as an off-spec item")
+            if RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].os == 1 then
+                RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].os = 0
+                out(RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].item .. "|r |cFFaaaa00unmarked|r as an off-spec item")
             else
-                RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].os = 1
-                out(RaidLoggerStore.activeRaid.loot[RaidLoggerStore.activeRaid.lootCount].item .. "|r marked as an off-spec item")
+                RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].os = 1
+                out(RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].item .. "|r marked as an off-spec item")
             end
         end
     elseif  "P" == cmd then
@@ -491,7 +485,6 @@ function RaidLogger:StartRaid()
         players = {},
         zone = nil,
         loot = {},
-        lootCount = 0,
         buffs = {},
     }
     if not RaidLoggerStore.players then
@@ -1283,8 +1276,8 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
 
         for i = #editRaid.loot, 1, -1 do
             local entry = editRaid.loot[i]
-            local blueRecipe = entry.quality == 3 and (string.find(entry.item, "Recipe: ") == 1 or string.find(entry.item, "Formula: ") == 1 or string.find(entry.item, "Schematic: ") == 1);
-            local epicItem = entry.quality >= 0
+            local blueRecipe = entry.quality == QUALITY_RARE and (string.find(entry.item, "Recipe: ") == 1 or string.find(entry.item, "Formula: ") == 1 or string.find(entry.item, "Schematic: ") == 1)
+            local epicItem = entry.quality >= QUALITY_EPIC
             local searchMatch = searchText == "" or string.find(string.lower(entry.item), searchText)
             if (epicItem or blueRecipe) and searchMatch then 
                 self:AddRow(players, entry, not editRaid.endTime, votingEnabled)
