@@ -207,7 +207,7 @@
 
 
     <Frame name="RaidLogger_RaidWindow" parent="UIParent" frameStrata="HIGH" enableMouse="true" movable="true" resizable="true">
-        <Size x="200" y="200" />
+        <Size x="450" y="250" />
         <Anchors>
             <Anchor point="CENTER" />
         </Anchors>
@@ -225,8 +225,8 @@
         </Backdrop>
         <Scripts>
             <OnLoad>
-   			    self:SetBackdropColor (0.1, 0.1, 0.1, 1)
-    		    self:SetBackdropBorderColor(0, 0, 0, 1)
+   			    self:SetBackdropColor (0.1, 0.1, 0.1, 0.9)
+    		    self:SetBackdropBorderColor(0, 0, 0, 0.9)
             </OnLoad>
         </Scripts>
 
@@ -313,7 +313,7 @@
                 </Backdrop>
                 <Scripts>
                     <OnLoad>
-                        self:SetBackdropColor(0, 0, 0, 1)
+                        self:SetBackdropColor(0, 0, 0, 0.9)
         		        self:SetBackdropBorderColor(0, 0, 0, 0)
                     </OnLoad>
                 </Scripts>

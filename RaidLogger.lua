@@ -311,9 +311,9 @@ end
 function RaidLogger_Commands(msg)
     -- local _, _, cmd, arg1 = string.find(msg, "([%w]+)%s*(.*)$");
     local cmd, arg1 = _G.string.split(" ", msg)
-    cmd = string.upper(cmd)
-    -- out("cmd " .. cmd .. " / arg1 " .. arg1)
-    if not cmd then
+    cmd = string.upper(cmd) 
+    -- out("cmd '" .. cmd .. "'")
+    if not cmd or #cmd == 0 then
         RaidLogger:ChooseLastRaid()
         RaidLogger_RaidWindow:Refresh()
         RaidLogger_RaidWindow:Show()
@@ -511,6 +511,7 @@ function RaidLogger:StartRaid()
     RaidLogger:ChooseLastRaid()
     RaidLogger_RaidWindow:Refresh()
     RaidLogger_RaidWindow_Buttons_LootTab:Clicked()
+    RaidLogger_RaidWindow:Show()
 end
 
 function RaidLogger:EndRaid()
@@ -854,8 +855,11 @@ function RaidLoggerFrame:OnAddonLoaded()
         EndRaidReminder()
     end
     RaidLogger:ChooseLastRaid()
-    RaidLogger_RaidWindow:Refresh();
+    RaidLogger_RaidWindow:Refresh()
     RaidLogger_RaidWindow_Buttons_LootTab:Clicked()
+    if not RaidLoggerStore.activeRaid then 
+        RaidLogger_RaidWindow:Hide()
+    end 
 
     if RaidLoggerStore.sync then 
         successfulRequest = C_ChatInfo.RegisterAddonMessagePrefix(ADDON_PREFIX..RaidLoggerStore.sync)
@@ -943,8 +947,8 @@ function RaidLogger:SetTabBackdropColor(btn, hovering)
 		btn.label:SetTextColor(0.8, 0.8, 0.8, 0.5)
 	elseif hovering then 
 		if btn.selected then 
-			btn:SetBackdropColor(0.1, 0.1, 0.1, 1)
-            btn:SetBackdropBorderColor(0.1, 0.1, 0.1, 1)
+			btn:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+            btn:SetBackdropBorderColor(0.1, 0.1, 0.1, 0.9)
 			btn.label:SetTextColor(1, 1, 1, 1)
 		else 
 			btn:SetBackdropColor(0, 0, 0, 1)
@@ -953,8 +957,8 @@ function RaidLogger:SetTabBackdropColor(btn, hovering)
 		end 
 	else 
 		if btn.selected then 
-			btn:SetBackdropColor(0.1, 0.1, 0.1, 1)
-            btn:SetBackdropBorderColor(0.1, 0.1, 0.1, 1)
+			btn:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+            btn:SetBackdropBorderColor(0.1, 0.1, 0.1, 0.9)
 			btn.label:SetTextColor(1, 1, 1, 1)
 		else 
 			btn:SetBackdropColor(0, 0, 0, 1)
