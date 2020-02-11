@@ -237,7 +237,7 @@ local function EndRaidReminder()
 end
 
 -- loot can be itemId
-local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status)
+local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, idx)
     -- local vStartIndex, vEndIndex, vLinkColor, vItemCode, vItemEnchantCode, vItemSubCode, vUnknownCode, vItemName = strfind(loot, "|c(%x+)|Hitem:(%d+):(%d+):(%d+):(%d+)|h%[([^%]]+)%]|h|r");
     local itemName, itemLink, quality, _, _, itemType, _, _, _, _, vendorPrice = GetItemInfo(loot);
 
@@ -254,6 +254,9 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status)
     if who and quality >= QUALITY_UNCOMMON and not tableTextLookup(IGNORED_ITEMS, vItemName) then
         out("Logged loot: " .. ColorName(who) .. " received " .. itemLink)
         RaidLoggerStore.activeRaid.lootCount = RaidLoggerStore.activeRaid.lootCount + 1
+        if idx > RaidLoggerStore.activeRaid.lootCount then 
+            RaidLoggerStore.activeRaid.lootCount = idx
+        end 
         local entry = {
             player = who,
             item = itemName,
@@ -266,7 +269,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status)
             bank = 0,
             votes = votes or {},
             status = status or 0,
-            idx = RaidLoggerStore.activeRaid.lootCount,
+            idx = idx or RaidLoggerStore.activeRaid.lootCount,
             itemString = itemString,
             tradedTo = tradedTo or nil,
 
@@ -697,14 +700,16 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
             end
             if shouldAdd then 
                 if tradedTo == "" then tradedTo = nil end 
-                local votesParts = {_G.string.split("|", _votes)}
                 local votes = {}
-                for _, vote in ipairs(votesParts) do 
-                    local voteParts = {_G.string.split("-", vote)}
-                    votes[voteParts[1]] = tonumber(voteParts[2])
+                if _votes and #_votes > 0 then 
+                    local votesParts = {_G.string.split("|", _votes)}
+                    for _, vote in ipairs(votesParts) do 
+                        local voteParts = {_G.string.split("-", vote)}
+                        votes[voteParts[1]] = tonumber(voteParts[2])
+                    end 
                 end 
                 debug("who="..who.." itemString="..itemString.." quantity="..quantity.." ts="..ts)
-                LogLoot(who, itemString, quantity, ts, tradedTo, votes, status)
+                LogLoot(who, itemString, quantity, ts, tradedTo, votes, status, idx)
             end 
         else 
             out("Received loot sync, but no active raid - ignoring")
