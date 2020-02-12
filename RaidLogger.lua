@@ -624,7 +624,7 @@ end
 function RaidLogger:ChooseLastRaid()
     editRaidIndex = nil 
     if not RaidLoggerStore.activeRaid then 
-        if #RaidLoggerStore.raids > 0 then 
+        if RaidLoggerStore.raids and #RaidLoggerStore.raids > 0 then 
             editRaidIndex = #RaidLoggerStore.raids
             editRaid = RaidLoggerStore.raids[editRaidIndex]
         else 
@@ -1266,7 +1266,7 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
         local players = {}
         tinsert(players, DROPDOWN_DISENCHANT_NAME)
         tinsert(players, DROPDOWN_BANK_NAME)
-        for name, attStatus in pairs(editRaid.players) do 
+        for name, attStatus in pairs(editRaid.players or {}) do 
             tinsert(players, name)
         end 
         table.sort(players)
