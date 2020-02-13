@@ -366,6 +366,9 @@ function RaidLogger_Commands(msg)
         end
     elseif  "SYNC" == cmd then
         if arg1 and string.len(arg1) > 0 then
+            if string.len(arg1) > 6 then 
+                return out("Password is too long! Max length is 6 characters.")
+            end 
             RaidLoggerStore.sync = arg1 
             ReloadUI()
         else
@@ -1275,7 +1278,7 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
             if not entry.itemString then entry.itemString = ItemStringFromLink(entry.link) end 
 
             local blueRecipe = entry.quality == QUALITY_RARE and (string.find(entry.item, "Recipe: ") == 1 or string.find(entry.item, "Formula: ") == 1 or string.find(entry.item, "Schematic: ") == 1)
-            local epicItem = entry.quality >= QUALITY_EPIC
+            local epicItem = entry.quality >= (RaidLoggerStore.displayLootFilter or QUALITY_EPIC)
             local searchMatch = searchText == "" or string.find(string.lower(entry.item), searchText)
             if (epicItem or blueRecipe) and searchMatch then 
                 self:AddRow(players, entry, not editRaid.endTime, votingEnabled)
