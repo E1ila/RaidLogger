@@ -309,9 +309,14 @@ function RaidLogger_Commands(msg)
     cmd = string.upper(cmd) 
     -- out("cmd '" .. cmd .. "'")
     if not cmd or #cmd == 0 then
-        RaidLogger:ChooseLastRaid()
-        RaidLogger_RaidWindow:Refresh()
-        RaidLogger_RaidWindow:Show()
+        RaidLoggerStore.windowShown = not RaidLoggerStore.windowShown
+        if RaidLoggerStore.windowShown then 
+            RaidLogger:ChooseLastRaid()
+            RaidLogger_RaidWindow:Refresh()
+            RaidLogger_RaidWindow:Show()
+        else 
+            RaidLogger_RaidWindow:Hide()
+        end 
     elseif  "S" == cmd or "START" == cmd then
         RaidLogger:UpdateRaid()
     elseif  "H" == cmd or "HELP" == cmd then
@@ -476,7 +481,6 @@ function RaidLogger:StartRaid()
     RaidLogger:ChooseLastRaid()
     RaidLogger_RaidWindow:Refresh()
     RaidLogger_RaidWindow_Buttons_LootTab:Clicked()
-    RaidLogger_RaidWindow:Show()
 end
 
 function RaidLogger:EndRaid()
@@ -834,7 +838,9 @@ function RaidLoggerFrame:OnAddonLoaded()
     RaidLogger:ChooseLastRaid()
     RaidLogger_RaidWindow:Refresh()
     RaidLogger_RaidWindow_Buttons_LootTab:Clicked()
-    if not RaidLoggerStore.activeRaid then 
+    if RaidLoggerStore.windowShown then 
+        RaidLogger_RaidWindow:Show()
+    else 
         RaidLogger_RaidWindow:Hide()
     end 
 
