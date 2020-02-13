@@ -242,6 +242,7 @@
                 <Scripts>
                     <OnClick>
                         RaidLogger_RaidWindow:Hide()
+                        RaidLoggerStore.windowShown = false 
                     </OnClick>
                 </Scripts>
             </Button>            <!--$parent_CloseButton-->

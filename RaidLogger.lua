@@ -7,7 +7,7 @@
 
 -- TODO: set de=1 and bank=1 
 
-local VERSION = 2
+local VERSION = 2.0005
 local MIN_RAID_PLAYERS = 2
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
@@ -60,6 +60,8 @@ local SYNC_COUNCIL = "council"
 local SYNC_COUNCIL_WHO = "council?"
 local SYNC_VOTE = "vote"
 local SYNC_SUGGEST = "suggest"
+local SYNC_PING = "ping"
+local SYNC_PONG = "pong"
 
 local DROPDOWN_DISENCHANT_NAME = "-- Disenchant --"
 local DROPDOWN_BANK_NAME = "-- Bank --"
@@ -380,6 +382,9 @@ function RaidLogger_Commands(msg)
         else
             err("Missing sync test text!")
         end
+    elseif  "PING" == cmd then 
+        out("Sending PING query...")
+        RaidLogger:Post(0, sender, SYNC_PING)
     elseif  "RESEND" == cmd then
         if arg1 and string.len(arg1) > 0 then
             local entry = RaidLoggerStore.activeRaid.loot[tonumber(arg1)]
@@ -717,6 +722,15 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         if #currentCouncil > 0 then 
             self:AnnounceLootCouncil(currentCouncil)
         end 
+    end
+
+    if parts[1] == SYNC_PING then 
+        out("Received PING from "..sender)
+        self:Post(0, sender, SYNC_PONG, VERSION)
+    end
+
+    if parts[1] == SYNC_PONG then 
+        out("Received PONG from "..sender.." version "..parts[2])
     end
 
     if parts[1] == SYNC_VOTE then 
