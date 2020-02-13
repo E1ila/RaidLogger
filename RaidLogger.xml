@@ -446,6 +446,62 @@
                         </Scripts>
                     </Button>                    <!--$parent_RaidsTab-->
 
+                    <Button name="RaidLogger_EndRaidButton">
+                        <Size>
+                            <AbsDimension x="16" y="16"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="RIGHT" x="-7" y="0" />
+                        </Anchors>
+                        <NormalTexture file="Interface\AddOns\RaidLogger\assets\lock" />
+                        <HighlightTexture file="Interface\AddOns\RaidLogger\assets\lock" />
+                        <PushedTexture file="Interface\AddOns\RaidLogger\assets\lock" />
+                        <Scripts>
+                            <OnLoad>
+            				    self:RegisterForClicks("LeftButtonUp")
+                            </OnLoad>
+                            <OnClick>
+                                self:Clicked()
+                            </OnClick>
+                            <OnEnter>
+                                GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+                                GameTooltip:SetText("End raid")
+                                GameTooltip:Show()
+                            </OnEnter>
+                            <OnLeave>
+                                GameTooltip:Hide()
+                            </OnLeave>
+                        </Scripts>
+                    </Button>                    <!--RaidLogger_EndRaidButton-->
+
+                    <Button name="RaidLogger_DiscardRaidButton">
+                        <Size>
+                            <AbsDimension x="16" y="16"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="RIGHT" relativePoint="LEFT" relativeTo="RaidLogger_EndRaidButton" x="-7" y="0" />
+                        </Anchors>
+                        <NormalTexture file="Interface\AddOns\RaidLogger\assets\delete" />
+                        <HighlightTexture file="Interface\AddOns\RaidLogger\assets\delete" />
+                        <PushedTexture file="Interface\AddOns\RaidLogger\assets\delete" />
+                        <Scripts>
+                            <OnLoad>
+            				    self:RegisterForClicks("LeftButtonUp")
+                            </OnLoad>
+                            <OnClick>
+                                self:Clicked()
+                            </OnClick>
+                            <OnEnter>
+                                GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+                                GameTooltip:SetText("Discard raid")
+                                GameTooltip:Show()
+                            </OnEnter>
+                            <OnLeave>
+                                GameTooltip:Hide()
+                            </OnLeave>
+                        </Scripts>
+                    </Button>                    <!--$parent_EndRaid-->
+
                 </Frames>
             </Frame>            <!--$parent_Buttons-->
 
@@ -497,11 +553,35 @@
                             </OnLoad>
                         </Scripts>
                         <Frames>
+
+                            <Frame name="RaidLogger_DisplayLootFilter" inherits="UIDropDownMenuTemplate">
+                                <Anchors>
+                                    <Anchor point="LEFT" relativePoint="LEFT" relativeTo="RaidLogger_RaidWindow_LootTab" x="20" />
+                                    <Anchor point="TOP" y="1" />
+                                </Anchors>
+                                <Scripts>
+                                    <OnLoad>
+                                        UIDropDownMenu_SetWidth(self, 100) 
+                                        UIDropDownMenu_JustifyText(self, "LEFT")
+                                    </OnLoad>
+                                </Scripts>
+                                <Layers>
+                                    <Layer level="BACKGROUND">
+                                        <FontString name="$parent_Text" inherits="ChatFontNormal" font="RaidLoggerFont" text="Show">
+                                            <Color r="0.7" g="0.7" b="0.7"/>
+                                            <Anchors>
+                                                <Anchor point="RIGHT" relativePoint="LEFT" x="10" y="2" />
+                                            </Anchors>
+                                        </FontString>
+                                    </Layer>
+                                </Layers>
+                            </Frame>
+
                             <EditBox name="RaidLogger_Loot_SearchBox" letters="80" autoFocus="false">
                                 <Size x="150" y="20" />
                                 <Anchors>
-                                    <Anchor point="RIGHT" relativePoint="RIGHT" relativeTo="RaidLogger_RaidWindow_LootTab" />
-                                    <Anchor point="TOP" y="-1" />
+                                    <Anchor point="LEFT" relativePoint="RIGHT" relativeTo="RaidLogger_DisplayLootFilter" />
+                                    <Anchor point="TOP" y="-3" />
                                 </Anchors>
                                 <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
                                     <EdgeSize>
@@ -542,6 +622,7 @@
                                 </Scripts>
                                 <FontString inherits="RaidLoggerFont" />
                             </EditBox>
+
                         </Frames>
                     </Frame>
                 </ScrollChild>
@@ -579,7 +660,7 @@
                             <EditBox name="RaidLogger_Players_SearchBox" letters="80" autoFocus="false">
                                 <Size x="150" y="20" />
                                 <Anchors>
-                                    <Anchor point="RIGHT" relativePoint="RIGHT" relativeTo="RaidLogger_RaidWindow_PlayersTab" />
+                                    <Anchor point="LEFT" relativePoint="LEFT" relativeTo="RaidLogger_RaidWindow_PlayersTab" />
                                     <Anchor point="TOP" y="-1" />
                                 </Anchors>
                                 <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">

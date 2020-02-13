@@ -55,6 +55,15 @@ local QUALITY_RARE = 3 -- blue
 local QUALITY_EPIC = 4 -- purple
 local QUALITY_LEGENDARY = 5 -- orange
 
+local QUALITY_TEXT = {
+    [0] = "Poor",
+    [1] = "Common",
+    [2] = "Uncommon",
+    [3] = "Rare",
+    [4] = "Epic",    
+    [5] = "Legendary",
+}
+
 local SYNC_LOOT = "loot"
 local SYNC_COUNCIL = "council"
 local SYNC_COUNCIL_WHO = "council?"
@@ -98,7 +107,7 @@ end
 
 local function debug(text)
     if RaidLoggerStore.debug then 
-        print(" |cff0088ff<|cff00bbffRaidLogger|cff0088ff>|r DEBUG "..text)
+        print(" |cff0088ff<|cff00bbffRaidLogger|cff0088ff>|r |cff009999DEBUG |cff999999"..text)
     end 
 end 
 
@@ -441,14 +450,7 @@ function RaidLogger_Commands(msg)
             out("No active raid.")
         end
     elseif  "DISCARD" == cmd then
-        if RaidLoggerStore.activeRaid then
-            out("Raid has been discarded.")
-            RaidLoggerStore.activeRaid = nil
-            RaidLogger:ChooseLastRaid()
-            RaidLogger_RaidWindow:Refresh()
-        else
-            out("No active raid.")
-        end
+        RaidLogger:DiscardRaid()
     elseif  "VERSION" == cmd or "V" == cmd then
         out("Version |cFFFFFF00" .. VERSION)
     elseif  "DEBUG" == cmd then
@@ -490,6 +492,17 @@ function RaidLogger:StartRaid()
     RaidLogger_RaidWindow:Refresh()
     RaidLogger_RaidWindow_Buttons_LootTab:Clicked()
 end
+
+function RaidLogger:DiscardRaid() 
+    if RaidLoggerStore.activeRaid then
+        out("Raid has been discarded.")
+        RaidLoggerStore.activeRaid = nil
+        RaidLogger:ChooseLastRaid()
+        RaidLogger_RaidWindow:Refresh()
+    else
+        out("No active raid.")
+    end
+end 
 
 function RaidLogger:EndRaid()
     if RaidLoggerStore.activeRaid then
@@ -730,7 +743,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
     end
 
     if parts[1] == SYNC_PONG then 
-        out("Received PONG from "..sender.." version "..parts[2])
+        out("Received PONG from |cff0000ff"..sender.."|r version |cff0000ff"..parts[2])
     end
 
     if parts[1] == SYNC_VOTE then 
@@ -1117,7 +1130,7 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
         row.root:SetBackdrop({bgFile = "Interface/Tooltips/UI-Tooltip-Background"})
         row.root:SetBackdropColor(0, 0, 0, 0.3)
 		if #self.rows == 0 then 
-			row.root:SetPoint("TOPLEFT", self.scrollContent, 0, -25);
+			row.root:SetPoint("TOPLEFT", self.scrollContent, 0, -29);
 			row.root:SetPoint("RIGHT", self, 0, 0);
 		else 
 			row.root:SetPoint("TOPLEFT", self.rows[#self.rows].root, "BOTTOMLEFT", 0, -2);
@@ -1133,7 +1146,7 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
         row.statusFrame:SetSize(16, 16)
         row.statusFrame:SetPoint("LEFT", 46, 0)  
         row.statusFrame:SetScript("OnLeave", function(self)
-            GameTooltip_Hide();
+            GameTooltip_Hide()
         end);	
         row.statusImage = row.root:CreateTexture();
         row.statusImage:SetAllPoints(row.statusFrame)
@@ -1156,8 +1169,12 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
 		row.timeLabel:SetTextColor(0.8, 0.8, 0.8, 1)
 		row.timeLabel:SetPoint("RIGHT", row.root, "LEFT", 40, 0)
 		row.timeLabel:SetFont(FONT_NAME, 10)
-	end 
-	row.timeLabel:SetText(date("%H:%M", entry.ts));
+    end 
+    if entry.ts then 
+        row.timeLabel:SetText(date("%H:%M", entry.ts));
+    else 
+        row.timeLabel:SetText("no time");
+    end 
 
     if not row.playerDropdown then 
         row.playerDropdown = CreateFrame("Frame", "RaidLogger_RaidWindow_PlayerDropdown"..(self.visibleRows), row.root, "UIDropDownMenuTemplate")
@@ -1266,11 +1283,33 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
     self.visibleRows = 0
     
     if editRaid then 
+        if editRaidIndex then 
+            RaidLogger_EndRaidButton:Hide()
+            RaidLogger_DiscardRaidButton:Hide()
+        else
+            RaidLogger_EndRaidButton:Show()
+            RaidLogger_DiscardRaidButton:Show()
+        end
+    
         local title = (editRaid.zone or "??").." / "..editRaid.date
         if not editRaidIndex then 
             title = title.." (active)"
         end
         RaidLogger_RaidWindow_Title_Text:SetText(title)
+
+        local currentFilter = RaidLoggerStore.displayLootFilter or QUALITY_EPIC
+        UIDropDownMenu_Initialize(RaidLogger_DisplayLootFilter, function (frame, level, menuList)
+            local info = UIDropDownMenu_CreateInfo()
+            info.func = function (self) 
+                RaidLoggerStore.displayLootFilter = self.value 
+                RaidLogger_RaidWindow_LootTab:Refresh()
+            end 
+            for i = QUALITY_UNCOMMON, QUALITY_LEGENDARY do 
+                info.text, info.checked, info.value = QUALITY_TEXT[i].."+", currentFilter == i, i
+                UIDropDownMenu_AddButton(info)
+            end 
+        end)
+        UIDropDownMenu_SetText(RaidLogger_DisplayLootFilter, QUALITY_TEXT[currentFilter])    
 
         local players = {}
         tinsert(players, DROPDOWN_DISENCHANT_NAME)
@@ -1513,3 +1552,16 @@ function RaidLogger_RaidWindow_RaidsTab:Refresh()
 
     HideRowsBeyond(self.visibleRows + 1, self)
 end
+
+function RaidLogger_EndRaidButton:Clicked()
+    RaidLogger:AskQuestion("End Raid", "Do you want to close this raid?", function()  
+        RaidLogger:EndRaid()
+    end, nil, "End", "Cancel") 
+end 
+
+function RaidLogger_DiscardRaidButton:Clicked()
+    RaidLogger:AskQuestion("Discard Raid", "Do you want to discard this raid?", function()  
+        RaidLogger:DiscardRaid() 
+    end, nil, "Discard", "Cancel") 
+end 
+
