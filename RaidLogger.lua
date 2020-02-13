@@ -69,7 +69,7 @@ local BUFF_CHECK_SECONDS = 60
 local lastBuffCheck = 0
 local editRaid = nil 
 local editRaidIndex = nil
-local debugMode = false
+local debugMode = true
 local lastCouncilSync = 0
 local votingEnabled = false 
 
@@ -632,6 +632,9 @@ function RaidLogger:ChooseLastRaid()
         end 
     else 
         editRaid = RaidLoggerStore.activeRaid 
+    end 
+    if editRaid then 
+        if not editRaid.players then editRaid.players = {} end 
     end 
 end
 
@@ -1258,7 +1261,7 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
     
     if editRaid then 
         local title = (editRaid.zone or "??").." / "..editRaid.date
-        if not editRaid.endTime then 
+        if not editRaidIndex then 
             title = title.." (active)"
         end
         RaidLogger_RaidWindow_Title_Text:SetText(title)
@@ -1276,6 +1279,10 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
 
         for i = #editRaid.loot, 1, -1 do
             local entry = editRaid.loot[i]
+
+            -- migrate old records
+            if not entry.votes then entry.votes = {} end 
+
             local blueRecipe = entry.quality == QUALITY_RARE and (string.find(entry.item, "Recipe: ") == 1 or string.find(entry.item, "Formula: ") == 1 or string.find(entry.item, "Schematic: ") == 1)
             local epicItem = entry.quality >= QUALITY_EPIC
             local searchMatch = searchText == "" or string.find(string.lower(entry.item), searchText)
@@ -1472,7 +1479,7 @@ function RaidLogger_RaidWindow_RaidsTab:AddRow(raid, raidIndex)
 		row.zoneLabel:SetFont(FONT_NAME, 10)
     end 
     local text = raid.zone or ""
-    if not raid.endTime then 
+    if not raidIndex then 
         text = text .. " (active)"
     end 
     row.zoneLabel:SetText(text);
