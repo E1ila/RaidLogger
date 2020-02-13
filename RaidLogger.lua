@@ -7,7 +7,7 @@
 
 -- TODO: set de=1 and bank=1 
 
-local VERSION = 1.6
+local VERSION = 2
 local MIN_RAID_PLAYERS = 2
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
@@ -69,7 +69,6 @@ local BUFF_CHECK_SECONDS = 60
 local lastBuffCheck = 0
 local editRaid = nil 
 local editRaidIndex = nil
-local debugMode = true
 local lastCouncilSync = 0
 local votingEnabled = false 
 
@@ -96,7 +95,7 @@ local function out(text)
 end 
 
 local function debug(text)
-    if debugMode then 
+    if RaidLoggerStore.debug then 
         print(" |cff0088ff<|cff00bbffRaidLogger|cff0088ff>|r DEBUG "..text)
     end 
 end 
@@ -235,6 +234,12 @@ local function EndRaidReminder()
     err(" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 end
 
+local function ItemStringFromLink(itemLink) 
+    local startIndex, _ = string.find(itemLink, "item")
+    local _, endIndex = string.find(itemLink, "h%[")
+    return string.sub(itemLink, startIndex, endIndex-3)
+end 
+
 -- loot can be itemId
 local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, idx)
     -- local vStartIndex, vEndIndex, vLinkColor, vItemCode, vItemEnchantCode, vItemSubCode, vUnknownCode, vItemName = strfind(loot, "|c(%x+)|Hitem:(%d+):(%d+):(%d+):(%d+)|h%[([^%]]+)%]|h|r");
@@ -246,9 +251,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, idx)
     end 
 
     itemLink = normalizeLink(itemLink)
-    local startIndex, _ = string.find(itemLink, "item")
-    local _, endIndex = string.find(itemLink, "h%[")
-    local itemString = string.sub(itemLink, startIndex, endIndex-3)
+    local itemString = ItemStringFromLink(itemLink)
 
     if who and quality >= QUALITY_UNCOMMON and not tableTextLookup(IGNORED_ITEMS, vItemName) then
         out("Logged loot: " .. ColorName(who) .. " received " .. itemLink)
@@ -467,8 +470,8 @@ function RaidLogger_Commands(msg)
     elseif  "VERSION" == cmd or "V" == cmd then
         out("Version |cFFFFFF00" .. VERSION)
     elseif  "DEBUG" == cmd then
-        debugMode = not debugMode
-        out("Debug mode: " .. tostring(debugMode))
+        RaidLoggerStore.debug = not RaidLoggerStore.debug
+        out("Debug mode: " .. tostring(RaidLoggerStore.debug))
     elseif  "END" == cmd then
         out("Raid ended, saving.")
         RaidLogger:EndRaid()
@@ -562,6 +565,7 @@ function RaidLogger:LogAttended(player)
         out("Logging attendance for " .. ColorName(player))
         RaidLoggerStore.activeRaid.players[player] = STATE_ATTENDED
         RaidLogger_RaidWindow_PlayersTab:Refresh()
+        RaidLogger_RaidWindow_LootTab:Refresh() -- refresh player list
     end 
 end
 
@@ -815,8 +819,12 @@ function RaidLogger:CheckVotes(entry)
 
     if editRaid and not editRaid.endTime then 
         -- update UI
-        local row = RaidLogger_RaidWindow_LootTab.rows[#RaidLogger_RaidWindow_LootTab.rows - entry.idx + 1]
-        RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
+        for _, row in ipairs(RaidLogger_RaidWindow_LootTab.rows) do 
+            if row.entry.idx == entry.idx then 
+                RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
+                break 
+            end 
+        end 
     end 
 end 
 
@@ -1102,7 +1110,9 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
 	self.visibleRows = self.visibleRows + 1
 
     local existingRow = self.rows[self.visibleRows]
-	local row = existingRow or {};
+    local row = existingRow or {};
+    
+    row.entry = entry 
 
 	if not row.root then 
 		row.root = CreateFrame("FRAME", nil, self.scrollContent);		
@@ -1282,6 +1292,8 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
 
             -- migrate old records
             if not entry.votes then entry.votes = {} end 
+            if not entry.idx then entry.idx = i end 
+            if not entry.itemString then entry.itemString = ItemStringFromLink(entry.link) end 
 
             local blueRecipe = entry.quality == QUALITY_RARE and (string.find(entry.item, "Recipe: ") == 1 or string.find(entry.item, "Formula: ") == 1 or string.find(entry.item, "Schematic: ") == 1)
             local epicItem = entry.quality >= QUALITY_EPIC
@@ -1379,7 +1391,7 @@ function RaidLogger_RaidWindow_PlayersTab:Refresh()
     
     if editRaid then 
         local players = {}
-        for name, attStatus in pairs(editRaid.players) do 
+        for name, attStatus in pairs(editRaid.players or {}) do 
             tinsert(players, name)
         end 
         table.sort(players)
