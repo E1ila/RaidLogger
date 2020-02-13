@@ -262,9 +262,6 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, idx)
             link = itemLink,
             quality = quality,
             quantity = quantity,
-            de = 0,
-            os = 0,
-            bank = 0,
             votes = votes or {},
             status = status or 0,
             idx = #RaidLoggerStore.activeRaid.loot + 1,
@@ -416,34 +413,6 @@ function RaidLogger_Commands(msg)
             RaidLogger:LogAttended(FixPlayerName(arg1))
         else
             err("Missing player name!")
-        end
-    elseif  "DE" == cmd then
-        if not RaidLoggerStore.activeRaid then
-            out("No active raid!")
-        elseif #RaidLoggerStore.activeRaid.loot == 0 then
-            out("No loot logged!")
-        else
-            if RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].de == 1 then
-                RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].de = 0
-                out(RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].item .. "|r |cFFaaaa00unmarked|r as disenchanted")
-            else
-                RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].de = 1
-                out(RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].item .. "|r marked as disenchanted")
-            end
-        end
-    elseif  "OS" == cmd then
-        if not RaidLoggerStore.activeRaid then
-            out("No active raid!")
-        elseif #RaidLoggerStore.activeRaid.loot == 0 then
-            out("No loot logged!")
-        else
-            if RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].os == 1 then
-                RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].os = 0
-                out(RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].item .. "|r |cFFaaaa00unmarked|r as an off-spec item")
-            else
-                RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].os = 1
-                out(RaidLoggerStore.activeRaid.loot[#RaidLoggerStore.activeRaid.loot].item .. "|r marked as an off-spec item")
-            end
         end
     elseif  "P" == cmd then
         if RaidLoggerStore.activeRaid then
@@ -764,7 +733,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         if entry.tradedTo == parts[4] then return end -- tradeTo already recorded
 
         entry.tradedTo = parts[4]
-        local row = RaidLogger_RaidWindow_LootTab.rows[#RaidLogger_RaidWindow_LootTab.rows - entry.idx + 1]
+        local row = self:FindRow(entry.idx)
         RaidLogger_RaidWindow_LootTab:TradedToChanged(row, entry) 
 
         if entry.tradedTo == DROPDOWN_DISENCHANT_NAME then 
@@ -819,11 +788,15 @@ function RaidLogger:CheckVotes(entry)
 
     if editRaid and not editRaid.endTime then 
         -- update UI
-        for _, row in ipairs(RaidLogger_RaidWindow_LootTab.rows) do 
-            if row.entry.idx == entry.idx then 
-                RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
-                break 
-            end 
+        local row = self:FindRow(entry.idx)
+        RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
+    end 
+end 
+
+function RaidLogger:FindRow(entryIdx)
+    for _, row in ipairs(RaidLogger_RaidWindow_LootTab.rows) do 
+        if row.entry.idx == entryIdx then 
+            return row 
         end 
     end 
 end 
@@ -1036,7 +1009,7 @@ local function HideRowsBeyond(j, container)
 	end 
 end
 
-function setButtonState(state, prefix, btn)
+local function SetButtonState(state, prefix, btn)
     local texture = "Interface\\AddOns\\RaidLogger\\assets\\"..prefix.."-"
     if state == 1 then 
         texture = texture .. "on"
@@ -1096,8 +1069,8 @@ end
 function RaidLogger_RaidWindow_LootTab:TradedToChanged(row, entry) 
     entry.votes = {}
     entry.status = 0
-    entry.de = 0
-    entry.os = 0
+    SetButtonState(0, "agree", row.yesButton)
+    SetButtonState(0, "disagree", row.noButton)
     UIDropDownMenu_SetText(row.playerDropdown, entry.tradedTo)
     RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
     if votingEnabled then 
@@ -1214,18 +1187,18 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
         row.noButton:RegisterForClicks("AnyUp")
     end 
     local vote = entry.votes[UnitName("player")] 
-    setButtonState(questionOp(vote == 1, 1, 0), "agree", row.yesButton)
-    setButtonState(questionOp(vote == 0, 1, 0), "disagree", row.noButton)
+    SetButtonState(questionOp(vote == 1, 1, 0), "agree", row.yesButton)
+    SetButtonState(questionOp(vote == 0, 1, 0), "disagree", row.noButton)
     row.yesButton:SetScript("OnClick", function(self) 
-        setButtonState(1, "agree", self)
-        setButtonState(0, "disagree", row.noButton)
+        SetButtonState(1, "agree", self)
+        SetButtonState(0, "disagree", row.noButton)
         entry.votes[UnitName("player")] = 1
         RaidLogger:Post(1, nil, SYNC_VOTE, entry.idx, entry.itemString, 1)
         RaidLogger:CheckVotes(entry)
     end)
     row.noButton:SetScript("OnClick", function(self) 
-        setButtonState(1, "disagree", self)
-        setButtonState(0, "agree", row.yesButton)
+        SetButtonState(1, "disagree", self)
+        SetButtonState(0, "agree", row.yesButton)
         entry.votes[UnitName("player")] = 0
         RaidLogger:Post(1, nil, SYNC_VOTE, entry.idx, entry.itemString, 0)
         RaidLogger:CheckVotes(entry)
