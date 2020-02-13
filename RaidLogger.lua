@@ -264,7 +264,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, idx)
             quantity = quantity,
             votes = votes or {},
             status = status or 0,
-            idx = #RaidLoggerStore.activeRaid.loot + 1,
+            idx = idx or #RaidLoggerStore.activeRaid.loot + 1,
             itemString = itemString,
             tradedTo = tradedTo,
 
