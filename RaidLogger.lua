@@ -71,6 +71,13 @@ local SYNC_VOTE = "vote"
 local SYNC_SUGGEST = "suggest"
 local SYNC_PING = "ping"
 local SYNC_PONG = "pong"
+local SYNC_CHECK = "check"
+local SYNC_CHECK_REPLY = "check-reply"
+local SYNC_RESEND = "resend"
+
+local SYNC_COOLDOWN_SECONDS = 60
+local NEXT_SYNC_CHECK_MIN_SECONDS = 60
+local NEXT_SYNC_CHECK_RANDOM_SECONDS = 60
 
 local DROPDOWN_DISENCHANT_NAME = "-- Disenchant --"
 local DROPDOWN_BANK_NAME = "-- Bank --"
@@ -82,6 +89,8 @@ local editRaid = nil
 local editRaidIndex = nil
 local lastCouncilSync = 0
 local votingEnabled = false 
+local nextSyncCheck = 0
+local lastSync = 0
 
 RaidLoggerDelayedMessages = {}
 RaidLoggerPendingLoot = {}
@@ -252,7 +261,7 @@ local function ItemStringFromLink(itemLink)
 end 
 
 -- loot can be itemId
-local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, idx)
+local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
     -- local vStartIndex, vEndIndex, vLinkColor, vItemCode, vItemEnchantCode, vItemSubCode, vUnknownCode, vItemName = strfind(loot, "|c(%x+)|Hitem:(%d+):(%d+):(%d+):(%d+)|h%[([^%]]+)%]|h|r");
     local itemName, itemLink, quality, _, _, itemType, _, _, _, _, vendorPrice = GetItemInfo(loot);
 
@@ -275,7 +284,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, idx)
             quantity = quantity,
             votes = votes or {},
             status = status or 0,
-            idx = idx or #RaidLoggerStore.activeRaid.loot + 1,
+            lootid = lootid or (#RaidLoggerStore.activeRaid.loot + 1),
             itemString = itemString,
             tradedTo = tradedTo,
 
@@ -284,7 +293,8 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, idx)
         RaidLogger_RaidWindow_LootTab:Refresh()
 
         if not ts then 
-            RaidLogger:PostLootEntry(entry, 1, nil)
+            local count = #RaidLoggerStore.activeRaid.loot
+            RaidLogger:PostLootEntry(entry, count.."/"..count, 1, nil)
         end 
     end
 end
@@ -395,14 +405,7 @@ function RaidLogger_Commands(msg)
         out("Sending PING query...")
         RaidLogger:Post(0, sender, SYNC_PING)
     elseif  "RESEND" == cmd then
-        if arg1 and string.len(arg1) > 0 then
-            local entry = RaidLoggerStore.activeRaid.loot[tonumber(arg1)]
-            RaidLogger:PostLootEntry(entry, 1, nil)
-        else
-            for i, entry in ipairs(RaidLoggerStore.activeRaid.loot) do 
-                RaidLogger:PostLootEntry(entry, i, nil)
-            end 
-        end
+        -- RaidLogger:ResendLoot(nil, arg1)
     elseif  "CLEAR" == cmd then
         RaidLoggerStore.activeRaid.loot = {}
         RaidLogger_RaidWindow_LootTab:Refresh()
@@ -651,16 +654,16 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
             out("Couldn't set vote, no active raid")
             return nil
         end 
-        local idx = tonumber(parts[2])
-        if #RaidLoggerStore.activeRaid.loot < idx then 
-            out("Couldn't set vote, loot #"..idx.." is missing")
+        local lootid = tonumber(parts[2])
+        local entry = self:FindEntry(lootid)
+        if not entry then 
+            out("|cffffff00Couldn't find loot "..lootid)
+            nextSyncCheck = 1 -- sync now, if possible
             return nil
         end 
-        local entry = RaidLoggerStore.activeRaid.loot[idx]
         if entry.itemString ~= parts[3] then 
-            __p1 = entry.itemString
-            __p2 = parts[3]
-            out("Wrong item at index "..idx..", expected "..parts[3].." but got "..entry.itemString.." - ignoring vote")
+            out("|cffffff00Wrong item found with id "..lootid..", expected "..parts[3].." but got "..entry.itemString)
+            nextSyncCheck = 1 -- sync now, if possible
             return nil
         end 
         return entry 
@@ -669,20 +672,26 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
     if parts[1] == SYNC_LOOT then 
         -- 2-receiver, 3-itemString, 4-quantity, 5-ts, 6-index, 7-tradedTo, 8-status, 9-votes
         if RaidLoggerStore.activeRaid then 
+            if #parts < 11 then 
+                debug("|cffff0000"..sender.." is using an old version, ignoring loot message")
+                return 
+            end 
             local t = time() - 10
-            local _votes = parts[9]
-            local status = tonumber(parts[8])
-            local tradedTo = parts[7]
-            local idx = tonumber(parts[6])
-            local ts = tonumber(parts[5])
-            local quantity = tonumber(parts[4])
-            local itemString = parts[3]
-            local who = parts[2]
+            local _votes = parts[11]
+            local status = tonumber(parts[10])
+            local tradedTo = parts[9]
+            local lootid = tonumber(parts[8])
+            local ts = tonumber(parts[7])
+            local quantity = tonumber(parts[6])
+            local itemString = parts[5]
+            local who = parts[4]
+            local lootProgress = parts[3] -- 1/4  2/4  3/4  4/4 
+            local version = tonumber(parts[2])
 
             local shouldAdd = true
             for i = #RaidLoggerStore.activeRaid.loot, 1, -1 do 
                 local loggedItem = RaidLoggerStore.activeRaid.loot[i]
-                if loggedItem.idx == idx then 
+                if loggedItem.lootid == lootid then 
                     if loggedItem.itemId == itemId then 
                         shouldAdd = false 
                         debug("Found matching loot entry")
@@ -690,6 +699,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                     else 
                         shouldAdd = false 
                         out("Loot log isn't synced!")
+                        RaidLoggerStore.activeRaid.loot = {} -- make sure next check will resync
                         break 
                     end
                 end 
@@ -708,11 +718,10 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                 LogLoot(who, itemString, quantity, ts, tradedTo, votes, status, idx)
             end 
         else 
-            out("Received loot sync, but no active raid - ignoring")
+            out("|cffffff00Received loot sync, but no active raid - ignoring")
         end 
-    end 
 
-    if parts[1] == SYNC_COUNCIL then 
+    elseif parts[1] == SYNC_COUNCIL then 
         local currentCouncil = self:PackLootCouncil()
         if currentCouncil == parts[2] then return end -- council not changed
 
@@ -728,25 +737,21 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
             out("Received new loot council from "..sender..": "..parts[2])
             RaidLogger_RaidWindow_LootTab:Refresh()
         end 
-    end
 
-    if parts[1] == SYNC_COUNCIL_WHO then 
+    elseif parts[1] == SYNC_COUNCIL_WHO then 
         local currentCouncil = self:PackLootCouncil()
         if #currentCouncil > 0 then 
             self:AnnounceLootCouncil(currentCouncil)
         end 
-    end
 
-    if parts[1] == SYNC_PING then 
+    elseif parts[1] == SYNC_PING then 
         out("Received PING from "..sender)
         self:Post(0, sender, SYNC_PONG, VERSION)
-    end
 
-    if parts[1] == SYNC_PONG then 
+    elseif parts[1] == SYNC_PONG then 
         out("Received PONG from |cff0000ff"..sender.."|r version |cff0000ff"..parts[2])
-    end
 
-    if parts[1] == SYNC_VOTE then 
+    elseif parts[1] == SYNC_VOTE then 
         local entry = VerifyLoot(parts)
         if not entry then return end 
         
@@ -758,16 +763,15 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         out(sender.." voted "..voteStr.." to give "..entry.link.." to "..entry.tradedTo)
 
         self:CheckVotes(entry)
-    end 
 
-    if parts[1] == SYNC_SUGGEST then 
+    elseif parts[1] == SYNC_SUGGEST then 
         local entry = VerifyLoot(parts)
         if not entry then return end 
 
         if entry.tradedTo == parts[4] then return end -- tradeTo already recorded
 
         entry.tradedTo = parts[4]
-        local row = self:FindRow(entry.idx)
+        local row = self:FindRow(entry.lootid)
         RaidLogger_RaidWindow_LootTab:TradedToChanged(row, entry) 
 
         if entry.tradedTo == DROPDOWN_DISENCHANT_NAME then 
@@ -777,7 +781,39 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         else 
             out(sender.." suggests to give "..entry.link.." to "..entry.tradedTo)
         end 
+
+    elseif parts[1] == SYNC_CHECK then 
+        if RaidLoggerStore.activeRaid and RaidLoggerStore.activeRaid.loot then 
+            self:Post(1, nil, SYNC_CHECK_REPLY, #RaidLoggerStore.activeRaid.loot, RaidLoggerStore.activeRaid.zone or "")
+        end 
+
+    elseif parts[1] == SYNC_CHECK_REPLY then 
+        self:ScheduleSyncCheck() -- reset check timer
+
+        local zone = parts[3]
+        local lootCount = tonumber(parts[2])
+
+        -- start a raid
+        if not RaidLoggerStore.activeRaid then 
+            self:StartRaid()
+            if #parts[2] > 0 then 
+                RaidLoggerStore.activeRaid.zone = parts[3]
+            end 
+        end
+
+        if lootCount > #RaidLoggerStore.activeRaid.loot and time() - lastSync > SYNC_COOLDOWN_SECONDS then 
+            lastSync = time()
+            RaidLoggerStore.activeRaid.loot = {}
+            self:Post(0, sender, SYNC_RESEND)
+        end 
+    
+    elseif parts[1] == SYNC_RESEND then 
+        self:ResendLoot(sender)
     end 
+end 
+
+function RaidLogger:ScheduleSyncCheck() 
+    nextSyncCheck = time() + NEXT_SYNC_CHECK_MIN_SECONDS + math.random(NEXT_SYNC_CHECK_RANDOM_SECONDS)
 end 
 
 function RaidLogger:Post(delaySeconds, toWho, ...) 
@@ -786,6 +822,17 @@ function RaidLogger:Post(delaySeconds, toWho, ...)
         ["msg"] = table.concat({...}, ","),
         ["to"] = toWho,
     })
+end 
+
+function RaidLogger:ResendLoot(sendTo, index)
+    if index and string.len(index) > 0 then
+        local entry = RaidLoggerStore.activeRaid.loot[tonumber(index)]
+        RaidLogger:PostLootEntry(entry, index.."/"..#RaidLoggerStore.activeRaid.loot, 1, sendTo)
+    else
+        for i, entry in ipairs(RaidLoggerStore.activeRaid.loot) do 
+            RaidLogger:PostLootEntry(entry, i.."/"..#RaidLoggerStore.activeRaid.loot, i, sendTo)
+        end 
+    end
 end 
 
 function RaidLogger:CheckVotes(entry) 
@@ -822,25 +869,33 @@ function RaidLogger:CheckVotes(entry)
 
     if editRaid and not editRaid.endTime then 
         -- update UI
-        local row = self:FindRow(entry.idx)
+        local row = self:FindRow(entry.lootid)
         RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
     end 
 end 
 
-function RaidLogger:FindRow(entryIdx)
+function RaidLogger:FindRow(lootid)
     for _, row in ipairs(RaidLogger_RaidWindow_LootTab.rows) do 
-        if row.entry.idx == entryIdx then 
+        if row.entry.lootid == lootid then 
             return row 
         end 
     end 
 end 
 
-function RaidLogger:PostLootEntry(entry, delaySeconds, sendTo)
+function RaidLogger:FindEntry(lootid)
+    for _, entry in ipairs(RaidLoggerStore.activeRaid.loot) do 
+        if entry.lootid == lootid then 
+            return entry
+        end 
+    end 
+end 
+
+function RaidLogger:PostLootEntry(entry, lootProgress, delaySeconds, sendTo)
     local votes = {}
     for name, vote in pairs(entry.votes) do 
         tinsert(votes, name.."-"..vote)
     end 
-    RaidLogger:Post(delaySeconds, sendTo, SYNC_LOOT, entry.player, entry.itemString, entry.quantity, entry.ts, entry.idx, entry.tradedTo or "_", entry.status, table.concat(votes, "|"))
+    RaidLogger:Post(delaySeconds, sendTo, SYNC_LOOT, VERSION, lootProgress, entry.player, entry.itemString, entry.quantity, entry.ts, entry.lootid, entry.tradedTo or "_", entry.status, table.concat(votes, "|"))
 end 
 
 
@@ -879,6 +934,7 @@ function RaidLoggerFrame:OnAddonLoaded()
         if successfulRequest then 
             out("Registered for sync on "..RaidLoggerStore.sync)
             RaidLogger:Post(5, nil, SYNC_COUNCIL_WHO)
+            nextSyncCheck = time() + 2
         else 
             printerr("Failed registering to message prefix!")
         end 
@@ -886,16 +942,18 @@ function RaidLoggerFrame:OnAddonLoaded()
 end
 
 function RaidLoggerFrame:OnUpdate()
-    if RaidLoggerStore and RaidLoggerStore.activeRaid and time() - lastBuffCheck >= BUFF_CHECK_SECONDS then 
+    local now = time()
+    if RaidLoggerStore and RaidLoggerStore.activeRaid and now - lastBuffCheck >= BUFF_CHECK_SECONDS then 
         -- out("checking buffs...")
         if not RaidLoggerStore.activeRaid.buffs then RaidLoggerStore.activeRaid.buffs = {} end 
-        lastBuffCheck = time() 
+        lastBuffCheck = now 
         RaidLogger_CheckBuffs(RaidLoggerStore.activeRaid.buffs)
     end 
     if RaidLoggerDelayedMessages and #RaidLoggerDelayedMessages then 
+        -- send message in queue
         newStack = {}
         for _, meta in ipairs(RaidLoggerDelayedMessages) do 
-            if meta.time <= time() then 
+            if meta.time <= now then 
                 debug("SYNC OUT - "..meta.msg)
                 if meta.to then 
                     C_ChatInfo.SendAddonMessage(ADDON_PREFIX..RaidLoggerStore.sync, meta.msg, "WHISPER", meta.to)
@@ -909,11 +967,16 @@ function RaidLoggerFrame:OnUpdate()
         RaidLoggerDelayedMessages = newStack
     end 
     if RaidLoggerPendingLoot and #RaidLoggerPendingLoot then 
+        -- try to log loot again, last GetItemInfo query returned nil
         local params = RaidLoggerPendingLoot[1]
         table.remove(RaidLoggerPendingLoot, 1)
         if params then 
             LogLoot(params[1], params[2], params[3], params[4])
         end 
+    end 
+    if nextSyncCheck > 0 and now > nextSyncCheck and now - lastSync > SYNC_COOLDOWN_SECONDS then 
+        RaidLogger:ScheduleSyncCheck() 
+        RaidLogger:Post(0, nil, SYNC_CHECK)
     end 
 end 
 
@@ -1184,7 +1247,7 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
     local function Dropdown_OnClick(self)
         entry.tradedTo = self.value 
         RaidLogger_RaidWindow_LootTab:TradedToChanged(row, entry)
-        RaidLogger:Post(1, nil, SYNC_SUGGEST, entry.idx, entry.itemString, entry.tradedTo)
+        RaidLogger:Post(1, nil, SYNC_SUGGEST, entry.lootid, entry.itemString, entry.tradedTo)
     end
     UIDropDownMenu_Initialize(row.playerDropdown, function (frame, level, menuList)
         local info = UIDropDownMenu_CreateInfo()
@@ -1233,14 +1296,14 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
         SetButtonState(1, "agree", self)
         SetButtonState(0, "disagree", row.noButton)
         entry.votes[UnitName("player")] = 1
-        RaidLogger:Post(1, nil, SYNC_VOTE, entry.idx, entry.itemString, 1)
+        RaidLogger:Post(1, nil, SYNC_VOTE, entry.lootid, entry.itemString, 1)
         RaidLogger:CheckVotes(entry)
     end)
     row.noButton:SetScript("OnClick", function(self) 
         SetButtonState(1, "disagree", self)
         SetButtonState(0, "agree", row.yesButton)
         entry.votes[UnitName("player")] = 0
-        RaidLogger:Post(1, nil, SYNC_VOTE, entry.idx, entry.itemString, 0)
+        RaidLogger:Post(1, nil, SYNC_VOTE, entry.lootid, entry.itemString, 0)
         RaidLogger:CheckVotes(entry)
     end)
 
@@ -1327,7 +1390,7 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
 
             -- migrate old records
             if not entry.votes then entry.votes = {} end 
-            if not entry.idx then entry.idx = i end 
+            if not entry.lootid then entry.lootid = i end 
             if not entry.itemString then entry.itemString = ItemStringFromLink(entry.link) end 
 
             local blueRecipe = entry.quality == QUALITY_RARE and (string.find(entry.item, "Recipe: ") == 1 or string.find(entry.item, "Formula: ") == 1 or string.find(entry.item, "Schematic: ") == 1)
