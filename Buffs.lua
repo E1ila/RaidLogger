@@ -24,6 +24,11 @@ local BUFFS = {
         desc = "DMT Stamina",
         type = "World",
     },
+    ["11364"] = {
+        name = "Resistance",
+        desc = "Magic Resistance Potion",
+        type = "Consumable",
+    },
     ["3593"] = {
         name = "Health II",
         desc = "Elixir of Fortitude",

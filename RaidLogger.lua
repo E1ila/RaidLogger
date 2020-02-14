@@ -7,7 +7,7 @@
 
 -- TODO: set de=1 and bank=1 
 
-local VERSION = 2.0005
+local VERSION = 2.0007
 local MIN_RAID_PLAYERS = 2
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
