@@ -74,6 +74,7 @@ local SYNC_PONG = "pong"
 local SYNC_CHECK = "check"
 local SYNC_CHECK_REPLY = "check-reply"
 local SYNC_RESEND = "resend"
+local SYNC_END = "end"
 
 local SYNC_COOLDOWN_SECONDS = 60
 local NEXT_SYNC_CHECK_MIN_SECONDS = 60
@@ -462,6 +463,7 @@ function RaidLogger_Commands(msg)
     elseif  "END" == cmd then
         out("Raid ended, saving.")
         RaidLogger:EndRaid()
+        RaidLogger:Post(0, nil, SYNC_END)
     end
 end
 
@@ -809,6 +811,11 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
     
     elseif parts[1] == SYNC_RESEND then 
         self:ResendLoot(sender)
+
+    elseif parts[1] == SYNC_END then 
+        if RaidLoggerStore.activeRaid then
+            RaidLogger:EndRaid()
+        end 
     end 
 end 
 
