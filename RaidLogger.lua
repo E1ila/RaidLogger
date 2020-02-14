@@ -388,11 +388,16 @@ function RaidLogger_Commands(msg)
         end
     elseif  "SYNC" == cmd then
         if arg1 and string.len(arg1) > 0 then
-            if string.len(arg1) > 6 then 
-                return out("Password is too long! Max length is 6 characters.")
+            if arg1 == "NOW" then 
+                RaidLoggerStore.activeRaid.loot = {}
+                self:Post(0, sender, SYNC_RESEND)    
+            else 
+                if string.len(arg1) > 6 then 
+                    return out("Password is too long! Max length is 6 characters.")
+                end 
+                RaidLoggerStore.sync = arg1 
+                ReloadUI()
             end 
-            RaidLoggerStore.sync = arg1 
-            ReloadUI()
         else
             err("Missing sync password!")
         end
@@ -405,8 +410,6 @@ function RaidLogger_Commands(msg)
     elseif  "PING" == cmd then 
         out("Sending PING query...")
         RaidLogger:Post(0, sender, SYNC_PING)
-    elseif  "RESEND" == cmd then
-        -- RaidLogger:ResendLoot(nil, arg1)
     elseif  "CLEAR" == cmd then
         RaidLoggerStore.activeRaid.loot = {}
         RaidLogger_RaidWindow_LootTab:Refresh()
@@ -716,7 +719,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                         votes[voteParts[1]] = tonumber(voteParts[2])
                     end 
                 end 
-                debug("who="..who.." itemString="..itemString.." quantity="..quantity.." ts="..ts)
+                debug("who="..who.." itemString="..itemString.." quantity="..quantity.." ts="..ts.." tradedTo="..tostring(tradedTo))
                 LogLoot(who, itemString, quantity, ts, tradedTo, votes, status, idx)
             end 
         else 
@@ -751,7 +754,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         self:Post(0, sender, SYNC_PONG, VERSION)
 
     elseif parts[1] == SYNC_PONG then 
-        out("Received PONG from |cff0000ff"..sender.."|r version |cff0000ff"..parts[2])
+        out("Received PONG from |cff88ff00"..sender.."|r version |cff88ff00"..parts[2])
 
     elseif parts[1] == SYNC_VOTE then 
         local entry = VerifyLoot(parts)
@@ -1177,6 +1180,7 @@ end
 function RaidLogger_RaidWindow_LootTab:TradedToChanged(row, entry) 
     entry.votes = {}
     entry.status = 0
+    -- RaidLogger_RaidWindow_LootTab:Refresh()
     SetButtonState(0, "agree", row.yesButton)
     SetButtonState(0, "disagree", row.noButton)
     UIDropDownMenu_SetText(row.playerDropdown, entry.tradedTo)
