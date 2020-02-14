@@ -388,9 +388,10 @@ function RaidLogger_Commands(msg)
         end
     elseif  "SYNC" == cmd then
         if arg1 and string.len(arg1) > 0 then
-            if arg1 == "NOW" then 
+            if string.upper(arg1) == "NOW" then 
                 RaidLoggerStore.activeRaid.loot = {}
-                self:Post(0, sender, SYNC_RESEND)    
+                lastSync = 0
+                self:Post(0, nil, SYNC_CHECK)    
             else 
                 if string.len(arg1) > 6 then 
                     return out("Password is too long! Max length is 6 characters.")
