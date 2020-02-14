@@ -672,7 +672,8 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
     if parts[1] == SYNC_LOOT then 
         -- 2-receiver, 3-itemString, 4-quantity, 5-ts, 6-index, 7-tradedTo, 8-status, 9-votes
         if RaidLoggerStore.activeRaid then 
-            if #parts < 11 then 
+            local version = tonumber(parts[2])
+            if not version then 
                 debug("|cffff0000"..sender.." is using an old version, ignoring loot message")
                 return 
             end 
@@ -686,7 +687,6 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
             local itemString = parts[5]
             local who = parts[4]
             local lootProgress = parts[3] -- 1/4  2/4  3/4  4/4 
-            local version = tonumber(parts[2])
 
             local shouldAdd = true
             for i = #RaidLoggerStore.activeRaid.loot, 1, -1 do 
