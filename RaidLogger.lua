@@ -983,7 +983,9 @@ function RaidLoggerFrame:OnUpdate()
     end 
     if nextSyncCheck > 0 and now > nextSyncCheck and now - lastSync > SYNC_COOLDOWN_SECONDS then 
         RaidLogger:ScheduleSyncCheck() 
-        RaidLogger:Post(0, nil, SYNC_CHECK)
+        if RaidLoggerStore.activeRaid then 
+            RaidLogger:Post(0, nil, SYNC_CHECK)
+        end 
     end 
 end 
 
