@@ -404,7 +404,7 @@ function RaidLogger_Commands(msg)
         end
     elseif  "SEND" == cmd then
         if arg1 and string.len(arg1) > 0 then
-            RaidLogger:Post(1, nil, arg1)
+            RaidLogger:Post(1, nil, SYNC_CHECK)
         else
             err("Missing sync test text!")
         end
