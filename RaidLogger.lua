@@ -5,10 +5,8 @@
 -- Time: 18:36
 --
 
--- TODO: set de=1 and bank=1 
-
-local VERSION = 2.0007
-local MIN_RAID_PLAYERS = 2
+local VERSION = 2.0008
+local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
 local ADDON_PREFIX = "RaidLogger"
@@ -21,7 +19,7 @@ local TRACKED_INSTANCES = {
     [5] = "Ahn'Qiraj",
     [6] = "Ruins of Ahn'Qiraj",
     [7] = "Naxxramas",
-    [8] = "Ragefire Chasm",
+    -- [8] = "Ragefire Chasm",
 }
 
 local CLASS_COLOR = {
@@ -500,6 +498,7 @@ function RaidLogger:StartRaid()
     RaidLogger:ChooseLastRaid()
     RaidLogger_RaidWindow:Refresh()
     RaidLogger_RaidWindow_Buttons_LootTab:Clicked()
+    nextSyncCheck = 1 -- check with other raiders if there's loot going on
 end
 
 function RaidLogger:DiscardRaid() 
@@ -800,11 +799,8 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         local lootCount = tonumber(parts[2])
 
         -- start a raid
-        if not RaidLoggerStore.activeRaid then 
-            self:StartRaid()
-            if #parts[2] > 0 then 
-                RaidLoggerStore.activeRaid.zone = parts[3]
-            end 
+        if not RaidLoggerStore.activeRaid or RaidLoggerStore.activeRaid.zone ~= parts[3] then 
+            return 
         end
 
         if lootCount > #RaidLoggerStore.activeRaid.loot and time() - lastSync > SYNC_COOLDOWN_SECONDS then 
