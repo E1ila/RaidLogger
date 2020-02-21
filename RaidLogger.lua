@@ -19,7 +19,7 @@ local TRACKED_INSTANCES = {
     [5] = "Ahn'Qiraj",
     [6] = "Ruins of Ahn'Qiraj",
     [7] = "Naxxramas",
-    -- [8] = "Ragefire Chasm",
+    [8] = "Ragefire Chasm",
 }
 
 local CLASS_COLOR = {
