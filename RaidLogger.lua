@@ -347,6 +347,7 @@ function RaidLogger_Commands(msg)
         local zone = nil 
         if arg1 and #arg1 > 1 then 
             zone = string.sub(msg, #cmd + 1)
+            debug("Custom zone '"..zone.."'")
         end 
         RaidLogger:UpdateRaid(zone)
     elseif  "H" == cmd or "HELP" == cmd then
@@ -837,6 +838,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                 -- check loot again in 10 sec to make sure it didn't just take time for loot msg to get to us
                 firstSyncMismatch = time()
                 self:ScheduleSyncCheckSoon()
+                debug("Not in sync first time, will check again soon")
             else 
                 outOfSync = true
                 out("|cffff0000WARNING: You are not in sync! "..sender.." has "..lootCount.." items while you have only "..tostring(#RaidLoggerStore.activeRaid.loot)..". Write |cffffff00/rl resync "..sender.."|cffff0000 to rebuild item list from "..sender)
