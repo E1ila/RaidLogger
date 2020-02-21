@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 2.0008
+local VERSION = 2.0009
 local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
@@ -407,13 +407,21 @@ function RaidLogger_Commands(msg)
         end
     elseif  "CHECK" == cmd then
         lootMismatchs = 0
-        RaidLogger:Post(0, nil, SYNC_CHECK) 
+        RaidLogger:Post(0, nil, SYNC_CHECK, VERSION) 
     elseif  "RESYNC" == cmd then
         if arg1 and string.len(arg1) > 0 then
             RaidLoggerStore.activeRaid.loot = {}
             lastSync = 0
             out("Requesting full item resync from "..arg1)
             RaidLogger:FullResync(arg1)
+        else 
+            err("Missing sync target! Write /rl resync <PLAYER_NAME>")
+        end 
+    elseif  "RESEND" == cmd then
+        if arg1 and string.len(arg1) > 0 then
+            local entry = RaidLoggerStore.activeRaid.loot[tonumber(arg1)]
+            local count = #RaidLoggerStore.activeRaid.loot
+            RaidLogger:PostLootEntry(entry, count.."/"..count, 1, nil)
         else 
             err("Missing sync target! Write /rl resync <PLAYER_NAME>")
         end 
@@ -816,6 +824,16 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         end 
 
     elseif parts[1] == SYNC_CHECK then 
+        if not parts[2] then 
+            out("|cffffff00"..sender.." is using an old version of RaidLogger, this may lead to unexpected behaviour")
+        else 
+            local ver = tonumber(parts[2]) 
+            if ver < VERSION then 
+                out("|cffffff00"..sender.." is using an old version of RaidLogger ("..ver.."), this may lead to unexpected behaviour")
+            elseif ver > VERSION then 
+                out("|cffffff00You are using an old version of RaidLogger, this may lead to unexpected behaviour!")
+            end 
+        end 
         lootMismatchs = 0
         self:ScheduleSyncCheck() -- reset check timer
         if RaidLoggerStore.activeRaid and RaidLoggerStore.activeRaid.loot and not syncingNow then 
@@ -1032,7 +1050,7 @@ function RaidLoggerFrame:OnUpdate()
         RaidLogger:ScheduleSyncCheck() 
         if RaidLoggerStore.activeRaid and not syncingNow then 
             lootMismatchs = 0
-            RaidLogger:Post(0, nil, SYNC_CHECK) 
+            RaidLogger:Post(0, nil, SYNC_CHECK, VERSION) 
         end 
     end 
 end 
