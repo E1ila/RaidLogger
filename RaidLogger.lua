@@ -1136,19 +1136,19 @@ end
 -- Question dialog
 
 function RaidLogger:AskQuestion(titleText, questionText, onYes, onNo, yesText, noText) 
-	FarmLog_QuestionDialog_Yes:SetScript("OnClick", function () 
-		FarmLog_QuestionDialog:Hide()
+	RaidLogger_QuestionDialog_Yes:SetScript("OnClick", function () 
+		RaidLogger_QuestionDialog:Hide()
 		onYes() 
 	end)
-	FarmLog_QuestionDialog_No:SetScript("OnClick", function () 
-		FarmLog_QuestionDialog:Hide()
+	RaidLogger_QuestionDialog_No:SetScript("OnClick", function () 
+		RaidLogger_QuestionDialog:Hide()
 		if onNo then onNo() end 
 	end)
-	FarmLog_QuestionDialog_Title_Text:SetText(titleText)
-	FarmLog_QuestionDialog_Question:SetText(questionText)
-	FarmLog_QuestionDialog_Yes:SetText(yesText or L["Yes"])
-	FarmLog_QuestionDialog_No:SetText(noText or L["No"])
-	FarmLog_QuestionDialog:Show()
+	RaidLogger_QuestionDialog_Title_Text:SetText(titleText)
+	RaidLogger_QuestionDialog_Question:SetText(questionText)
+	RaidLogger_QuestionDialog_Yes:SetText(yesText or L["Yes"])
+	RaidLogger_QuestionDialog_No:SetText(noText or L["No"])
+	RaidLogger_QuestionDialog:Show()
 end 
 
 
