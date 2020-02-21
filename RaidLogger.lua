@@ -1001,7 +1001,7 @@ function RaidLoggerFrame:OnUpdate()
         lastBuffCheck = now 
         RaidLogger_CheckBuffs(RaidLoggerStore.activeRaid.buffs)
     end 
-    if RaidLoggerDelayedMessages and #RaidLoggerDelayedMessages then 
+    if RaidLoggerDelayedMessages and #RaidLoggerDelayedMessages and RaidLoggerStore.sync then 
         -- send message in queue
         newStack = {}
         for _, meta in ipairs(RaidLoggerDelayedMessages) do 
