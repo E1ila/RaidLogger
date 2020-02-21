@@ -77,6 +77,8 @@ local SYNC_END = "end"
 local SYNC_COOLDOWN_SECONDS = 60
 local NEXT_SYNC_CHECK_MIN_SECONDS = 60
 local NEXT_SYNC_CHECK_RANDOM_SECONDS = 60
+local NEXT_SYNC_CHECK_SOON_MIN_SECONDS = 10
+local NEXT_SYNC_CHECK_SOON_RANDOM_SECONDS = 10
 
 local DROPDOWN_DISENCHANT_NAME = "-- Disenchant --"
 local DROPDOWN_BANK_NAME = "-- Bank --"
@@ -90,6 +92,10 @@ local lastCouncilSync = 0
 local votingEnabled = false 
 local nextSyncCheck = 0
 local lastSync = 0
+local firstSyncMismatch = 0
+local lootMismatchs = 0
+local outOfSync = false
+local syncingNow = false
 
 RaidLoggerDelayedMessages = {}
 RaidLoggerPendingLoot = {}
@@ -386,26 +392,26 @@ function RaidLogger_Commands(msg)
         end
     elseif  "SYNC" == cmd then
         if arg1 and string.len(arg1) > 0 then
-            if string.upper(arg1) == "NOW" then 
-                RaidLoggerStore.activeRaid.loot = {}
-                lastSync = 0
-                RaidLogger:Post(0, nil, SYNC_CHECK) 
-            else 
-                if string.len(arg1) > 6 then 
-                    return out("Password is too long! Max length is 6 characters.")
-                end 
-                RaidLoggerStore.sync = arg1 
-                ReloadUI()
+            if string.len(arg1) > 6 then 
+                return out("Password is too long! Max length is 6 characters.")
             end 
+            RaidLoggerStore.sync = arg1 
+            ReloadUI()
         else
             err("Missing sync password!")
         end
-    elseif  "SEND" == cmd then
+    elseif  "CHECK" == cmd then
+        lootMismatchs = 0
+        RaidLogger:Post(0, nil, SYNC_CHECK) 
+    elseif  "RESYNC" == cmd then
         if arg1 and string.len(arg1) > 0 then
-            RaidLogger:Post(1, nil, SYNC_CHECK)
-        else
-            err("Missing sync test text!")
-        end
+            RaidLoggerStore.activeRaid.loot = {}
+            lastSync = 0
+            out("Requesting full item resync from "..arg1)
+            RaidLogger:FullResync(arg1)
+        else 
+            err("Missing sync target! Write /rl resync <PLAYER_NAME>")
+        end 
     elseif  "PING" == cmd then 
         out("Sending PING query...")
         RaidLogger:Post(0, sender, SYNC_PING)
@@ -703,8 +709,8 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                         break -- found it
                     else 
                         shouldAdd = false 
-                        out("Loot log isn't synced!")
-                        RaidLoggerStore.activeRaid.loot = {} -- make sure next check will resync
+                        out("|cffff0000Loot log isn't synced!")
+                        outOfSync = true 
                         break 
                     end
                 end 
@@ -721,6 +727,19 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                 end 
                 debug("who="..who.." itemString="..itemString.." quantity="..quantity.." ts="..ts.." tradedTo="..tostring(tradedTo))
                 LogLoot(who, itemString, quantity, ts, tradedTo, votes, status, idx)
+            end 
+
+            local progressParts = {_G.string.split("/", lootProgress)}
+            if outOfSync and progressParts[1] == progressParts[2] then 
+                syncingNow = false
+                -- last item
+                if #RaidLoggerStore.activeRaid.loot == tonumber(progressParts[2]) then 
+                    outOfSync = false
+                    lootMismatchs = 0
+                    firstSyncMismatch = 0
+                else 
+                    err("Resync ended, but we still don't have the same number of items as "..sender)
+                end 
             end 
         else 
             out("|cffffff00Received loot sync, but no active raid - ignoring")
@@ -788,25 +807,32 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         end 
 
     elseif parts[1] == SYNC_CHECK then 
-        if RaidLoggerStore.activeRaid and RaidLoggerStore.activeRaid.loot then 
+        lootMismatchs = 0
+        self:ScheduleSyncCheck() -- reset check timer
+        if RaidLoggerStore.activeRaid and RaidLoggerStore.activeRaid.loot and not syncingNow then 
             self:Post(1, nil, SYNC_CHECK_REPLY, #RaidLoggerStore.activeRaid.loot, RaidLoggerStore.activeRaid.zone or "")
         end 
 
     elseif parts[1] == SYNC_CHECK_REPLY then 
-        self:ScheduleSyncCheck() -- reset check timer
-
         local zone = parts[3]
         local lootCount = tonumber(parts[2])
 
         -- start a raid
-        if not RaidLoggerStore.activeRaid or RaidLoggerStore.activeRaid.zone ~= parts[3] then 
+        if not RaidLoggerStore.activeRaid or RaidLoggerStore.activeRaid.zone ~= parts[3] or syncingNow then 
             return 
         end
 
-        if lootCount > #RaidLoggerStore.activeRaid.loot and time() - lastSync > SYNC_COOLDOWN_SECONDS then 
-            lastSync = time()
-            RaidLoggerStore.activeRaid.loot = {}
-            self:Post(0, sender, SYNC_RESEND)
+        if lootCount > #RaidLoggerStore.activeRaid.loot then  -- and time() - lastSync > SYNC_COOLDOWN_SECONDS
+            lootMismatchs = lootMismatchs + 1
+            -- someone else has more loot than us!
+            if firstSyncMismatch == 0 then 
+                -- check loot again in 10 sec to make sure it didn't just take time for loot msg to get to us
+                firstSyncMismatch = time()
+                self:ScheduleSyncCheckSoon()
+            else 
+                outOfSync = true
+                out("|cffff0000WARNING: You are not in sync! "..sender.." has "..lootCount.." items while you have only "..tostring(#RaidLoggerStore.activeRaid.loot)..". Write |cffffff00/rl resync "..sender.."|cffff0000 to rebuild item list from "..sender)
+            end 
         end 
     
     elseif parts[1] == SYNC_RESEND then 
@@ -819,8 +845,19 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
     end 
 end 
 
+function RaidLogger:FullResync(from)
+    syncingNow = true 
+    lastSync = time()
+    RaidLoggerStore.activeRaid.loot = {}
+    self:Post(0, from, SYNC_RESEND)
+end 
+
 function RaidLogger:ScheduleSyncCheck() 
     nextSyncCheck = time() + NEXT_SYNC_CHECK_MIN_SECONDS + math.random(NEXT_SYNC_CHECK_RANDOM_SECONDS)
+end 
+
+function RaidLogger:ScheduleSyncCheckSoon() 
+    nextSyncCheck = time() + NEXT_SYNC_CHECK_SOON_MIN_SECONDS + math.random(NEXT_SYNC_CHECK_SOON_RANDOM_SECONDS)
 end 
 
 function RaidLogger:Post(delaySeconds, toWho, ...) 
@@ -983,8 +1020,9 @@ function RaidLoggerFrame:OnUpdate()
     end 
     if nextSyncCheck > 0 and now > nextSyncCheck and now - lastSync > SYNC_COOLDOWN_SECONDS then 
         RaidLogger:ScheduleSyncCheck() 
-        if RaidLoggerStore.activeRaid then 
-            RaidLogger:Post(0, nil, SYNC_CHECK)
+        if RaidLoggerStore.activeRaid and not syncingNow then 
+            lootMismatchs = 0
+            RaidLogger:Post(0, nil, SYNC_CHECK) 
         end 
     end 
 end 
