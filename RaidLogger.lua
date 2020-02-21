@@ -346,7 +346,7 @@ function RaidLogger_Commands(msg)
     elseif  "S" == cmd or "START" == cmd then
         local zone = nil 
         if arg1 and #arg1 > 1 then 
-            zone = string.sub(msg, #cmd + 1)
+            zone = string.sub(msg, #cmd + 2)
             debug("Custom zone '"..zone.."'")
         end 
         RaidLogger:UpdateRaid(zone)
