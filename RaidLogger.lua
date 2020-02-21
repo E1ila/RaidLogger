@@ -344,7 +344,11 @@ function RaidLogger_Commands(msg)
             RaidLogger_RaidWindow:Hide()
         end 
     elseif  "S" == cmd or "START" == cmd then
-        RaidLogger:UpdateRaid()
+        local zone = nil 
+        if arg1 and #arg1 > 1 then 
+            zone = string.sub(msg, #cmd + 1)
+        end 
+        RaidLogger:UpdateRaid(zone)
     elseif  "H" == cmd or "HELP" == cmd then
         out("Commands: ")
         out("  |cFF00FF00/rl|r - show UI")
@@ -595,7 +599,7 @@ function RaidLogger:RemoveFromLog(player)
     RaidLogger_RaidWindow_PlayersTab:Refresh()
 end
 
-function RaidLogger:UpdateRaid()
+function RaidLogger:UpdateRaid(forceZone)
     local raidSize = GetNumRaidMembers()
 
     if raidSize == 0 then
@@ -608,6 +612,10 @@ function RaidLogger:UpdateRaid()
     if not RaidLoggerStore.activeRaid then
         RaidLogger:StartRaid();
     end
+
+    if forceZone and #forceZone > 2 then 
+        RaidLoggerStore.activeRaid.zone = forceZone
+    end 
 
     -- save zone
     if not RaidLoggerStore.activeRaid.zone then
