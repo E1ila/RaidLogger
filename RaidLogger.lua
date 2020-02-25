@@ -36,7 +36,7 @@ local CLASS_COLOR = {
 }
 
 local IGNORED_ITEMS = {
-    -- [1] = "Elementium Ore",
+    [1] = "Elementium Ore",
 }
 
 local COLOR_INSTANCE = "|cffff33ff"
@@ -294,7 +294,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
         end 
     end
 
-    if who and quality >= QUALITY_UNCOMMON and not tableTextLookup(IGNORED_ITEMS, vItemName) then
+    if who and quality >= QUALITY_UNCOMMON then
         out("Logged loot: " .. ColorName(who) .. " received " .. itemLink)
         local entry = {
             player = who,
@@ -1500,7 +1500,8 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
             local blueRecipe = entry.quality == QUALITY_RARE and (string.find(entry.item, "Recipe: ") == 1 or string.find(entry.item, "Formula: ") == 1 or string.find(entry.item, "Schematic: ") == 1)
             local epicItem = entry.quality >= (RaidLoggerStore.displayLootFilter or QUALITY_EPIC)
             local searchMatch = searchText == "" or string.find(string.lower(entry.item), searchText)
-            if (epicItem or blueRecipe) and searchMatch then 
+            local ignoredItem = tableTextLookup(IGNORED_ITEMS, entry.item)
+            if (epicItem or blueRecipe) and searchMatch and not ignoredItem then 
                 self:AddRow(players, entry, not editRaid.endTime, votingEnabled)
             end 
         end
