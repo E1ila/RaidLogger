@@ -276,6 +276,9 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
         return
     end 
 
+    itemLink = normalizeLink(itemLink)
+    local itemString = ItemStringFromLink(itemLink)
+
     for i = #RaidLoggerStore.activeRaid.loot, 1, -1 do 
         local loggedItem = RaidLoggerStore.activeRaid.loot[i]
         if loggedItem.lootid == lootid then 
@@ -287,9 +290,6 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
             return 
         end 
     end
-
-    itemLink = normalizeLink(itemLink)
-    local itemString = ItemStringFromLink(itemLink)
 
     if who and quality >= QUALITY_UNCOMMON and not tableTextLookup(IGNORED_ITEMS, vItemName) then
         out("Logged loot: " .. ColorName(who) .. " received " .. itemLink)
