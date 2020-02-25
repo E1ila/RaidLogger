@@ -5,11 +5,14 @@
 -- Time: 18:36
 --
 
-local VERSION = 2.0010
+local VERSION = 2.0011
 local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
 local ADDON_PREFIX = "RaidLogger"
+
+-- local HOURGLASS_SAND_NAME = "Linen Cloth"
+local HOURGLASS_SAND_NAME = "Hourglass Sand"
 
 local TRACKED_INSTANCES = {
     [1] = "The Molten Core",
@@ -280,10 +283,10 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
     local itemString = ItemStringFromLink(itemLink)
     lootid = lootid or (#RaidLoggerStore.activeRaid.loot + 1)
 
-    debug("Checking dup of - "..lootid..","..itemString)
+    -- debug("Checking dup of - "..lootid..","..itemString)
     for i = #RaidLoggerStore.activeRaid.loot, 1, -1 do 
         local loggedItem = RaidLoggerStore.activeRaid.loot[i]
-        debug("Checking dup with - "..loggedItem.lootid..","..loggedItem.itemString)
+        -- debug("Checking dup with - "..loggedItem.lootid..","..loggedItem.itemString)
         if loggedItem.lootid == lootid then 
             if loggedItem.itemString == itemString then 
                 debug("Found matching loot entry")
@@ -293,6 +296,11 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
             return 
         end 
     end
+
+    if who and itemName == HOURGLASS_SAND_NAME then 
+        if not RaidLoggerStore.activeRaid.sands then RaidLoggerStore.activeRaid.sands = {} end 
+        RaidLoggerStore.activeRaid.sands[who] = (RaidLoggerStore.activeRaid.sands[who] or 0) + 1
+    end 
 
     if who and quality >= QUALITY_UNCOMMON then
         out("Logged loot: " .. ColorName(who) .. " received " .. itemLink)
@@ -378,6 +386,10 @@ function RaidLogger_Commands(msg)
         out("  |cFF00FF00/rl end|r - save and close raid, do this when raid ended.")
         out("  |cFF00FF00/rl p|r - print active raid, if any.")
         out("  |cFF00FF00/rl start|r - start logging a raid or update existing one.")
+        out("  |cFF00FF00/rl sand <channel>|r - print a list of players who picked [Hourglass Sand]. Channel can be raid/yell/guild or empty for say.")
+        out("  |cFF00FF00/rl ping|r - check who's on your sync channel.")
+        out("  |cFF00FF00/rl sync <password>|r - sets sync channel. Leave <password> empty to print the password.")
+        out("  |cFF00FF00/rl resync <player>|r - requests for full loot re-sync from <player>, make sure he's in your sync channel.")
     elseif  "LOG" == cmd then
         if not RaidLoggerStore.activeRaid then 
             out("No active raid!")
@@ -419,7 +431,7 @@ function RaidLogger_Commands(msg)
             RaidLoggerStore.sync = arg1 
             ReloadUI()
         else
-            err("Missing sync password!")
+            out("Current sync password: |cff00ff00" .. RaidLoggerStore.sync)
         end
     elseif  "CHECK" == cmd then
         lootMismatchs = 0
@@ -444,6 +456,25 @@ function RaidLogger_Commands(msg)
     elseif  "PING" == cmd then 
         out("Sending PING query...")
         RaidLogger:Post(0, sender, SYNC_PING)
+    elseif  "SAND" == cmd then 
+        if not editRaid.sands then 
+            out("No sands log in selected raid.")
+            return 
+        end 
+        local sorted = {}
+        for name in pairs(editRaid.sands) do table.insert(sorted, name) end
+        if #sorted == 0 then 
+            out("No sands were logged in selected raid.")
+            return 
+        end 
+        table.sort(sorted)
+        local output = "The following players have looted |cffffffff|Hitem:19183::::::::60:::::::|h[Hourglass Sand]|h|r: "
+        for i = 1, #sorted do 
+            local name = sorted[i]
+            output = output .. name .. " x" .. editRaid.sands[name]
+            if i < #sorted then output = output .. ", " end 
+        end
+        SendChatMessage(output, arg1)
     elseif  "CLEAR" == cmd then
         RaidLoggerStore.activeRaid.loot = {}
         RaidLogger_RaidWindow_LootTab:Refresh()
