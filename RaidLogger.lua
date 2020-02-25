@@ -276,6 +276,18 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
         return
     end 
 
+    for i = #RaidLoggerStore.activeRaid.loot, 1, -1 do 
+        local loggedItem = RaidLoggerStore.activeRaid.loot[i]
+        if loggedItem.lootid == lootid then 
+            if loggedItem.itemString == itemString then 
+                debug("Found matching loot entry")
+            else 
+                out("|cffff0000Loot log isn't synced!")
+            end
+            return 
+        end 
+    end
+
     itemLink = normalizeLink(itemLink)
     local itemString = ItemStringFromLink(itemLink)
 
@@ -721,24 +733,13 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
             -- if zone and zone ~= RaidLoggerStore.activeRaid.zone then 
             --     return -- ignore loot reports from a different zone, it may have different loot count
             -- end 
-
-            if RaidLoggerPendingLoot and #RaidLoggerPendingLoot > 0 then 
-                for i = 1, #RaidLoggerPendingLoot do 
-                    local checkItem = RaidLoggerPendingLoot[i]
-                    debug("Found item at RaidLoggerPendingLoot - "..(checkItem.who or "")..","..(checkItem.loot or "")..","..(checkItem.quantity or ""))
-                    debug("Comparing with                      - "..who..","..itemString..","..quantity)
-                    if checkItem.who == who and checkItem.loot == itemString and checkItem.quantity == quantity then 
-                        return -- ignore, waiting for loot info
-                    end 
-                end 
-            end 
     
             local lootCountBefore = #RaidLoggerStore.activeRaid.loot
             local shouldAdd = true
             for i = #RaidLoggerStore.activeRaid.loot, 1, -1 do 
                 local loggedItem = RaidLoggerStore.activeRaid.loot[i]
                 if loggedItem.lootid == lootid then 
-                    if loggedItem.itemId == itemId then 
+                    if loggedItem.itemString == itemString then 
                         shouldAdd = false 
                         debug("Found matching loot entry")
                         break -- found it
