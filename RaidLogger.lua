@@ -279,8 +279,10 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
     itemLink = normalizeLink(itemLink)
     local itemString = ItemStringFromLink(itemLink)
 
+    debug("Checking dup of - "..lootid..","..itemString)
     for i = #RaidLoggerStore.activeRaid.loot, 1, -1 do 
         local loggedItem = RaidLoggerStore.activeRaid.loot[i]
+        debug("Checking dup with - "..loggedItem.lootid..","..loggedItem.itemString)
         if loggedItem.lootid == lootid then 
             if loggedItem.itemString == itemString then 
                 debug("Found matching loot entry")
