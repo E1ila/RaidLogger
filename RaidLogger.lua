@@ -278,6 +278,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
 
     itemLink = normalizeLink(itemLink)
     local itemString = ItemStringFromLink(itemLink)
+    lootid = lootid or (#RaidLoggerStore.activeRaid.loot + 1)
 
     debug("Checking dup of - "..lootid..","..itemString)
     for i = #RaidLoggerStore.activeRaid.loot, 1, -1 do 
@@ -304,7 +305,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
             quantity = quantity,
             votes = votes or {},
             status = status or 0,
-            lootid = lootid or (#RaidLoggerStore.activeRaid.loot + 1),
+            lootid = lootid,
             itemString = itemString,
             tradedTo = tradedTo,
 
