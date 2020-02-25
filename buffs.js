@@ -345,7 +345,7 @@ module.exports = {
       "score": 5,
       "imageUrl": "https://wow.zamimg.com/images/wow/icons/large/inv_drink_04.jpg",
    },
-   "25804": {
+   "11364": {
       "name": "Resistance",
       "desc": "Magic Resistance Potion",
       "type": "Consumable",

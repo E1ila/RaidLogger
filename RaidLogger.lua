@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 2.0009
+local VERSION = 2.0010
 local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
@@ -299,7 +299,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
 
         if not ts then 
             local count = #RaidLoggerStore.activeRaid.loot
-            RaidLogger:PostLootEntry(entry, count.."/"..count, 1, nil)
+            RaidLogger:PostLootEntry(entry, count.."/"..count, 3, nil)
         end 
     end
 end
@@ -706,6 +706,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                 return 
             end 
             local t = time() - 10
+            -- local zone = #parts >= 12 and parts[12]
             local _votes = parts[11]
             local status = tonumber(parts[10])
             local tradedTo = parts[9]
@@ -716,6 +717,20 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
             local who = parts[4]
             local lootProgress = parts[3] -- 1/4  2/4  3/4  4/4 
 
+            -- if zone and zone ~= RaidLoggerStore.activeRaid.zone then 
+            --     return -- ignore loot reports from a different zone, it may have different loot count
+            -- end 
+
+            if RaidLoggerPendingLoot and #RaidLoggerPendingLoot > 0 then 
+                for i = 1, #RaidLoggerPendingLoot do 
+                    local checkItem = RaidLoggerPendingLoot[i]
+                    if checkItem.who == who and checkItem.loot == itemString and checkItem.quantity == quantity then 
+                        return -- ignore, waiting for loot info
+                    end 
+                end 
+            end 
+    
+            local lootCountBefore = #RaidLoggerStore.activeRaid.loot
             local shouldAdd = true
             for i = #RaidLoggerStore.activeRaid.loot, 1, -1 do 
                 local loggedItem = RaidLoggerStore.activeRaid.loot[i]
@@ -749,8 +764,9 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
             local progressParts = {_G.string.split("/", lootProgress)}
             if outOfSync and progressParts[1] == progressParts[2] then 
                 syncingNow = false
-                -- last item
-                if #RaidLoggerStore.activeRaid.loot == tonumber(progressParts[2]) then 
+                -- last item, using lootCountBefore because item may have been sent to query 
+                -- and RaidLoggerStore.activeRaid.loot hasn't changed yet
+                if lootCountBefore + 1 == tonumber(progressParts[2]) then 
                     outOfSync = false
                     lootMismatchs = 0
                     firstSyncMismatch = 0
@@ -963,6 +979,7 @@ function RaidLogger:FindEntry(lootid)
 end 
 
 function RaidLogger:PostLootEntry(entry, lootProgress, delaySeconds, sendTo)
+    -- if not RaidLoggerStore.activeRaid or not RaidLoggerStore.activeRaid.zone then return end 
     local votes = {}
     for name, vote in pairs(entry.votes) do 
         tinsert(votes, name.."-"..vote)
@@ -1026,11 +1043,15 @@ function RaidLoggerFrame:OnUpdate()
         newStack = {}
         for _, meta in ipairs(RaidLoggerDelayedMessages) do 
             if meta.time <= now then 
-                debug("SYNC OUT - "..meta.msg)
-                if meta.to then 
-                    C_ChatInfo.SendAddonMessage(ADDON_PREFIX..RaidLoggerStore.sync, meta.msg, "WHISPER", meta.to)
+                if #meta.msg > 253 then 
+                    err("Sync message is too long, skipping")
                 else 
-                    C_ChatInfo.SendAddonMessage(ADDON_PREFIX..RaidLoggerStore.sync, meta.msg, "RAID")
+                    debug("SYNC OUT - "..meta.msg)
+                    if meta.to then 
+                        C_ChatInfo.SendAddonMessage(ADDON_PREFIX..RaidLoggerStore.sync, meta.msg, "WHISPER", meta.to)
+                    else 
+                        C_ChatInfo.SendAddonMessage(ADDON_PREFIX..RaidLoggerStore.sync, meta.msg, "RAID")
+                    end 
                 end 
             else 
                 tinsert(newStack, meta)
