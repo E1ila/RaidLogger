@@ -725,7 +725,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
             if RaidLoggerPendingLoot and #RaidLoggerPendingLoot > 0 then 
                 for i = 1, #RaidLoggerPendingLoot do 
                     local checkItem = RaidLoggerPendingLoot[i]
-                    debug("Found item at RaidLoggerPendingLoot - "..checkItem.who..","..checkItem.loot..","..(checkItem.quantity or ""))
+                    debug("Found item at RaidLoggerPendingLoot - "..(checkItem.who or "")..","..(checkItem.loot or "")..","..(checkItem.quantity or ""))
                     debug("Comparing with                      - "..who..","..itemString..","..quantity)
                     if checkItem.who == who and checkItem.loot == itemString and checkItem.quantity == quantity then 
                         return -- ignore, waiting for loot info
