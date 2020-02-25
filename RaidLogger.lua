@@ -272,7 +272,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
 
     if not itemLink then
         debug("Adding item to RaidLoggerPendingLoot - "..who..","..loot..","..quantity)
-        tinsert(RaidLoggerPendingLoot, {who, loot, quantity, ts})
+        tinsert(RaidLoggerPendingLoot, {who, loot, quantity or 1, ts})
         return
     end 
 
@@ -725,7 +725,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
             if RaidLoggerPendingLoot and #RaidLoggerPendingLoot > 0 then 
                 for i = 1, #RaidLoggerPendingLoot do 
                     local checkItem = RaidLoggerPendingLoot[i]
-                    debug("Found item at RaidLoggerPendingLoot - "..checkItem.who..","..checkItem.loot..","..checkItem.quantity)
+                    debug("Found item at RaidLoggerPendingLoot - "..checkItem.who..","..checkItem.loot..","..(checkItem.quantity or ""))
                     debug("Comparing with                      - "..who..","..itemString..","..quantity)
                     if checkItem.who == who and checkItem.loot == itemString and checkItem.quantity == quantity then 
                         return -- ignore, waiting for loot info
