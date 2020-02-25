@@ -272,7 +272,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
 
     if not itemLink then
         debug("Adding item to RaidLoggerPendingLoot - "..who..","..loot..","..quantity)
-        tinsert(RaidLoggerPendingLoot, {who, loot, quantity or 1, ts})
+        tinsert(RaidLoggerPendingLoot, {who, loot, quantity or 1, ts, tradedTo, votes, status, lootid})
         return
     end 
 
@@ -1071,7 +1071,7 @@ function RaidLoggerFrame:OnUpdate()
         local params = RaidLoggerPendingLoot[1]
         table.remove(RaidLoggerPendingLoot, 1)
         if params then 
-            LogLoot(params[1], params[2], params[3], params[4])
+            LogLoot(params[1], params[2], params[3], params[4], params[5], params[6], params[7], params[8])
         end 
     end 
     if nextSyncCheck > 0 and now > nextSyncCheck and now - lastSync > SYNC_COOLDOWN_SECONDS then 
