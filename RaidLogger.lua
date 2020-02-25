@@ -763,8 +763,8 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                         votes[voteParts[1]] = tonumber(voteParts[2])
                     end 
                 end 
-                debug("who="..who.." itemString="..itemString.." quantity="..quantity.." ts="..ts.." tradedTo="..tostring(tradedTo))
-                LogLoot(who, itemString, quantity, ts, tradedTo, votes, status, idx)
+                debug("who="..who.." itemString="..itemString.." quantity="..quantity.." ts="..ts.." tradedTo="..tostring(tradedTo).." lootid="..(lootid or "nil"))
+                LogLoot(who, itemString, quantity, ts, tradedTo, votes, status, lootid)
             end 
 
             local progressParts = {_G.string.split("/", lootProgress)}
