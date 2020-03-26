@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 2.0011
+local VERSION = 2.0013
 local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
@@ -13,6 +13,7 @@ local ADDON_PREFIX = "RaidLogger"
 
 -- local HOURGLASS_SAND_NAME = "Linen Cloth"
 local HOURGLASS_SAND_NAME = "Hourglass Sand"
+local ACTIVE_RAID_TIMEOUT = 3600 * 12
 
 local TRACKED_INSTANCES = {
     [1] = "The Molten Core",
@@ -258,7 +259,7 @@ end
 local function EndRaidReminder()
     err(" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     err("    DO NOT FORGET TO END THE RAID !")
-    err("                /rl end")
+    err("                /rlog end")
     err(" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 end
 
@@ -376,20 +377,20 @@ function RaidLogger_Commands(msg)
         RaidLogger:UpdateRaid(zone)
     elseif  "H" == cmd or "HELP" == cmd then
         out("Commands: ")
-        out("  |cFF00FF00/rl|r - show UI")
-        out("  |cFF00FF00/rl |cFF00ff95a|cFF00FF00dd <player>|r - manually log an attended player.")
-        out("  |cFF00FF00/rl |cFF00ff95b|cFF00FF00ench <player>|r - log a benched player.")
-        out("  |cFF00FF00/rl log <itemlink> <receiver>|r - manually add looted item.")
-        out("  |cFF00FF00/rl de|r - marks last distributed loot item as disenchanted.")
-        out("  |cFF00FF00/rl os|r - marks last distributed loot as an off-spec item.")
-        out("  |cFF00FF00/rl discard|r - discard current raid, do this to ignore current raid.")        
-        out("  |cFF00FF00/rl end|r - save and close raid, do this when raid ended.")
-        out("  |cFF00FF00/rl p|r - print active raid, if any.")
-        out("  |cFF00FF00/rl start|r - start logging a raid or update existing one.")
-        out("  |cFF00FF00/rl sand <channel>|r - print a list of players who picked [Hourglass Sand]. Channel can be raid/yell/guild or empty for say.")
-        out("  |cFF00FF00/rl ping|r - check who's on your sync channel.")
-        out("  |cFF00FF00/rl sync <password>|r - sets sync channel. Leave <password> empty to print the password.")
-        out("  |cFF00FF00/rl resync <player>|r - requests for full loot re-sync from <player>, make sure he's in your sync channel.")
+        out("  |cFF00FF00/rlog|r - show UI")
+        out("  |cFF00FF00/rlog |cFF00ff95a|cFF00FF00dd <player>|r - manually log an attended player.")
+        out("  |cFF00FF00/rlog |cFF00ff95b|cFF00FF00ench <player>|r - log a benched player.")
+        out("  |cFF00FF00/rlog log <itemlink> <receiver>|r - manually add looted item.")
+        out("  |cFF00FF00/rlog de|r - marks last distributed loot item as disenchanted.")
+        out("  |cFF00FF00/rlog os|r - marks last distributed loot as an off-spec item.")
+        out("  |cFF00FF00/rlog discard|r - discard current raid, do this to ignore current raid.")        
+        out("  |cFF00FF00/rlog end|r - save and close raid, do this when raid ended.")
+        out("  |cFF00FF00/rlog p|r - print active raid, if any.")
+        out("  |cFF00FF00/rlog start|r - start logging a raid or update existing one.")
+        out("  |cFF00FF00/rlog sand <channel>|r - print a list of players who picked [Hourglass Sand]. Channel can be raid/yell/guild or empty for say.")
+        out("  |cFF00FF00/rlog ping|r - check who's on your sync channel.")
+        out("  |cFF00FF00/rlog sync <password>|r - sets sync channel. Leave <password> empty to print the password.")
+        out("  |cFF00FF00/rlog resync <player>|r - requests for full loot re-sync from <player>, make sure he's in your sync channel.")
     elseif  "LOG" == cmd then
         if not RaidLoggerStore.activeRaid then 
             out("No active raid!")
@@ -406,11 +407,11 @@ function RaidLogger_Commands(msg)
                 if player then 
                     LogLoot(player, itemLink, 1)
                 else 
-                    out("Incorrect usage of command, write |cff00ff00/rl log [ITEM_LINK] [RECEIVER_NAME]")
+                    out("Incorrect usage of command, write |cff00ff00/rlog log [ITEM_LINK] [RECEIVER_NAME]")
                 end 
             end				
         else 
-            out("Incorrect usage of command, write |cff00ff00/rl log [ITEM_LINK] [RECEIVER_NAME]")
+            out("Incorrect usage of command, write |cff00ff00/rlog log [ITEM_LINK] [RECEIVER_NAME]")
         end 
     elseif  "COUNCIL" == cmd then
         if arg1 and string.len(arg1) > 0 then
@@ -443,7 +444,7 @@ function RaidLogger_Commands(msg)
             out("Requesting full item resync from "..arg1)
             RaidLogger:FullResync(arg1)
         else 
-            err("Missing sync target! Write /rl resync <PLAYER_NAME>")
+            err("Missing sync target! Write /rlog resync <PLAYER_NAME>")
         end 
     elseif  "RESEND" == cmd then
         if arg1 and string.len(arg1) > 0 then
@@ -451,7 +452,7 @@ function RaidLogger_Commands(msg)
             local count = #RaidLoggerStore.activeRaid.loot
             RaidLogger:PostLootEntry(entry, count.."/"..count, 1, nil)
         else 
-            err("Missing sync target! Write /rl resync <PLAYER_NAME>")
+            err("Missing sync target! Write /rlog resync <PLAYER_NAME>")
         end 
     elseif  "PING" == cmd then 
         out("Sending PING query...")
@@ -913,7 +914,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                 debug("Not in sync first time, will check again soon")
             else 
                 outOfSync = true
-                out("|cffff0000WARNING: You are not in sync! "..sender.." has "..lootCount.." items while you have only "..tostring(#RaidLoggerStore.activeRaid.loot)..". Write |cffffff00/rl resync "..sender.."|cffff0000 to rebuild item list from "..sender)
+                out("|cffff0000WARNING: You are not in sync! "..sender.." has "..lootCount.." items while you have only "..tostring(#RaidLoggerStore.activeRaid.loot)..". Write |cffffff00/rlog resync "..sender.."|cffff0000 to rebuild item list from "..sender)
             end 
         end 
     
@@ -1031,8 +1032,9 @@ end
 
 function RaidLoggerFrame:OnAddonLoaded()
     SLASH_RaidLogger1 = "/rl"
+    SLASH_RaidLogger2 = "/rlog"
     SlashCmdList["RaidLogger"] = RaidLogger_Commands
-    out("Logs raid attendance into a file. Write |cFF00FF00/rl help|r for a list of commands.")
+    out("Logs raid attendance into a file. Write |cFF00FF00/rlog help|r for a list of commands.")
 
     RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_LootTab)
     RaidLogger:SetTabBackdropColor(RaidLogger_RaidWindow_Buttons_PlayersTab)
@@ -1044,8 +1046,13 @@ function RaidLoggerFrame:OnAddonLoaded()
         Store = nil 
     end 
     if RaidLoggerStore and RaidLoggerStore.activeRaid then
-        LoggingCombat(true) -- resume combat logging
-        EndRaidReminder()
+        -- check for raid timeout 
+        if time() - RaidLoggerStore.activeRaid.startTime > ACTIVE_RAID_TIMEOUT then 
+            RaidLogger:EndRaid()
+        else 
+            LoggingCombat(true) -- resume combat logging
+            EndRaidReminder()
+        end 
     end
     RaidLogger:ChooseLastRaid()
     RaidLogger_RaidWindow:Refresh()
