@@ -1,4 +1,4 @@
-## Interface: 11302
+## Interface: 11304
 ## Title: RaidLogger
 ## Author: Kof @Shazzrah (kof_kof on twitch)
 ## Notes: Auto logs raid attendance and loot distribution

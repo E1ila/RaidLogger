@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 2.0013
+local VERSION = 2.0014
 local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
@@ -1298,7 +1298,7 @@ function RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
         statusImage = "cross"
         statusTooltip = "Denied"
     end 
-    row.statusImage:SetTexture("Interface\\AddOns\\RaidLogger\\assets\\"..statusImage)
+    row.statusImage:SetNormalTexture("Interface\\AddOns\\RaidLogger\\assets\\"..statusImage)
     row.statusFrame:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(row.statusFrame, "ANCHOR_LEFT")
         GameTooltip:SetText(statusTooltip)
@@ -1353,19 +1353,27 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
         row.statusFrame:SetScript("OnLeave", function(self)
             GameTooltip_Hide()
         end);	
-        row.statusImage = row.root:CreateTexture();
+        row.statusImage = CreateFrame("BUTTON", nil, row.statusFrame);
+        row.statusImage:RegisterForClicks("AnyUp")
         row.statusImage:SetAllPoints(row.statusFrame)
     end 
+
+    row.statusImage:SetScript("OnClick", function(self) 
+        if entry.status == 1 then 
+            local _, link = GetItemInfo(entry.link)
+            SendChatMessage(link .. " --> " .. (entry.tradedTo or entry.player), "RAID_WARNING")
+        end 
+    end)
 
     if activeRaid then 
         playerDropdownOffX = -10
         if entry.tradedTo then 
             RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
         else 
-            row.statusImage:SetTexture(nil)
+            row.statusImage:SetNormalTexture(nil)
         end 
     else 
-        row.statusImage:SetTexture(nil)
+        row.statusImage:SetNormalTexture(nil)
         row.statusFrame:SetScript("OnEnter", nil)
     end 
     
@@ -1471,9 +1479,11 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
 
     row.labelFrame:SetScript("OnMouseUp", function(self, ...)
 		if IsShiftKeyDown() then
-			PlaceLinkInChatEditBox(entry.link) -- paste in chat box
+            local _, link = GetItemInfo(entry.link)
+			PlaceLinkInChatEditBox(link) -- paste in chat box
 		elseif IsControlKeyDown() then
-			DressUpItemLink(entry.link) -- preview
+            local _, link = GetItemInfo(entry.link)
+			DressUpItemLink(link) -- preview
 		end
     end);
     
