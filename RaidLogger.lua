@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 2.0014
+local VERSION = 2.0015
 local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
@@ -773,18 +773,11 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
             local shouldAdd = true
             for i = #RaidLoggerStore.activeRaid.loot, 1, -1 do 
                 local loggedItem = RaidLoggerStore.activeRaid.loot[i]
-                if loggedItem.lootid == lootid then 
-                    if loggedItem.itemString == itemString then 
-                        shouldAdd = false 
-                        debug("Found matching loot entry")
-                        break -- found it
-                    else 
-                        shouldAdd = false 
-                        out("|cffff0000Loot log isn't synced!")
-                        outOfSync = true 
-                        break 
-                    end
-                end 
+                if loggedItem.itemString == itemString then 
+                    shouldAdd = false 
+                    debug("Found matching loot entry")
+                    break -- found it
+                end
             end
             if shouldAdd then 
                 if tradedTo == "_" then tradedTo = nil end 
