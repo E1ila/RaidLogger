@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 2.0015
+local VERSION = 2.0016
 local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
@@ -19,11 +19,11 @@ local TRACKED_INSTANCES = {
     [1] = "The Molten Core",
     [2] = "Blackwing Lair",
     [3] = "Onyxia's Lair",
-    [4] = "Zul'Gurub",
-    [5] = "Ahn'Qiraj",
-    [6] = "Ruins of Ahn'Qiraj",
-    [7] = "Naxxramas",
-    [8] = "Ragefire Chasm",
+    [4] = "Ahn'Qiraj",
+    [5] = "Naxxramas",
+    -- [6] = "Zul'Gurub",
+    -- [7] = "Ruins of Ahn'Qiraj",
+    -- [8] = "Ragefire Chasm",
 }
 
 local CLASS_COLOR = {
@@ -41,6 +41,22 @@ local CLASS_COLOR = {
 
 local IGNORED_ITEMS = {
     [1] = "Elementium Ore",
+    -- [2] = "Clay Scarab",
+    -- [3] = "Stone Scarab",
+    -- [4] = "Gold Scarab",
+    -- [5] = "Silver Scarab",
+    -- [6] = "Bronze Scarab",
+    -- [7] = "Crystal Scarab",
+    -- [8] = "Bone Scarab",
+    -- [9] = "Ivory Scarab",
+    -- [10] = "Idol of Strife",
+    -- [11] = "Idol of the Sun",
+    -- [12] = "Idol of War",
+    -- [13] = "Idol of Night",
+    -- [14] = "Idol of the Sage",
+    -- [15] = "Idol of Rebirth",
+    -- [16] = "Idol of Death",
+    -- [17] = "Idol of Life",
 }
 
 local COLOR_INSTANCE = "|cffff33ff"
@@ -303,7 +319,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
         RaidLoggerStore.activeRaid.sands[who] = (RaidLoggerStore.activeRaid.sands[who] or 0) + 1
     end 
 
-    if who and quality >= QUALITY_UNCOMMON then
+    if who and quality >= QUALITY_RARE then
         out("Logged loot: " .. ColorName(who) .. " received " .. itemLink)
         local entry = {
             player = who,
