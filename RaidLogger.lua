@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 2.0016
+local VERSION = 2.0017
 local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
@@ -102,6 +102,7 @@ local NEXT_SYNC_CHECK_SOON_RANDOM_SECONDS = 10
 
 local DROPDOWN_DISENCHANT_NAME = "-- Disenchant --"
 local DROPDOWN_BANK_NAME = "-- Bank --"
+local DROPDOWN_FFA_NAME = "-- FFA --"
 
 local BUFF_CHECK_SECONDS = 60 
 
@@ -883,6 +884,8 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
             out(sender.." suggests to disenchant "..entry.link)
         elseif entry.tradedTo == DROPDOWN_BANK_NAME then 
             out(sender.." suggests to send "..entry.link.." to guild bank")
+        elseif entry.tradedTo == DROPDOWN_FFA_NAME then 
+            out(sender.." suggests "..entry.link.." as Free for All")
         else 
             out(sender.." suggests to give "..entry.link.." to "..entry.tradedTo)
         end 
@@ -1538,6 +1541,7 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
         local players = {}
         tinsert(players, DROPDOWN_DISENCHANT_NAME)
         tinsert(players, DROPDOWN_BANK_NAME)
+        tinsert(players, DROPDOWN_FFA_NAME)
         for name, attStatus in pairs(editRaid.players or {}) do 
             tinsert(players, name)
         end 
