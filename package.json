@@ -11,7 +11,7 @@
     "inquirer": "^6.2.2",
     "inquirer-async": "^1.1.0",
     "line-reader": "^0.4.0",
-    "moment": "^2.24.0"
+    "moment": "^2.29.4"
   },
   "devDependencies": {},
   "scripts": {
