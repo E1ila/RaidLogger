@@ -4,6 +4,21 @@ local BUFFS = {
         desc = "Dragonslayer",
         type = "World"
     },
+    ["355363"] = {
+        name = "Rallying Cry of the Dragonslayer", -- unbooned probably
+        desc = "Dragonslayer",
+        type = "World"
+    },
+    ["16609"] = {
+        name = "Warchief's Blessing",
+        desc = "Dragonslayer",
+        type = "World"
+    },
+    ["355366"] = {
+        name = "Warchief's Blessing", -- unbooned probably
+        desc = "Dragonslayer",
+        type = "World"
+    },
     ["15366"] = {
         name = "Songflower Serenade",
         desc = "Songflower",
@@ -222,6 +237,46 @@ local BUFFS = {
         name = "Rumsey Rum Black Label (15 sta)",
         desc = "Fishing",
         type = "Alcohol",
+    },
+    ["27721"] = {
+        name = "Very Berry Cream (23 spell dmg)",
+        desc = "Love Event",
+        type = "Food",
+    },
+    ["27720"] = {
+        name = "Buttermilk Delight (13 defense)",
+        desc = "Love Event",
+        type = "Food",
+    },
+    ["27723"] = {
+        name = "Dark Desire (2% hit)",
+        desc = "Love Event",
+        type = "Food",
+    },
+    ["27722"] = {
+        name = "Sweet Surprise (44 healing)",
+        desc = "Love Event",
+        type = "Food",
+    },
+    ["27669"] = {
+        name = "Orgrimmar Gift of Friendship (30 agi)",
+        desc = "Love Event",
+        type = "Food",
+    },
+    ["27670"] = {
+        name = "Thunder Bluff Gift of Friendship (30 sta)",
+        desc = "Love Event",
+        type = "Food",
+    },
+    ["27671"] = {
+        name = "Undercity Gift of Friendship (30 int)",
+        desc = "Love Event",
+        type = "Food",
+    },
+    ["17038"] = {
+        name = "Winterfall Firewater",
+        desc = "Winterfall Firewater",
+        type = "Consumable",
     },
 }
 

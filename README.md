@@ -17,7 +17,7 @@ Every time a player joins the raid, his attendance will be automatically logged.
 Loot distributed will be automatically logged as well when picked.
 ![loot log](https://octodex.github.com/E1ila/RaidLogger/imgs/loot-row.png)
 
-When raid is over, type `/rl end` to close and save the raid. For help and a full list of commands, type `/rl h` or `/rl help`.
+When raid is over, type `/rlog end` to close and save the raid. For help and a full list of commands, type `/rlog h` or `/rlog help`.
 
 #### Loot council
 
@@ -25,9 +25,9 @@ There are two way of working with this addon, your Master Looter can either send
 
 If you're distributing loot directly to the receiver, there's nothing special needed to be done, it'll track everything automatically, you can skip this section.
 
-To work with others, they have to install the addon as well, then everyone who's using it should write `/rl sync <SYNC_PASSWORD>`, everyone should use the same password to be able to sync.
+To work with others, they have to install the addon as well, then everyone who's using it should write `/rlog password <SYNC_PASSWORD>`, everyone should use the same password to be able to sync.
 
-To determine who's able to vote for loot, write `/rl council <PLAYER_NAME>` for each council member. This will be synced to other members in your sync channel so only one person needs to do it.
+To determine who's able to vote for loot, write `/rlog council <PLAYER_NAME>` for each council member. This will be synced to other members in your sync channel so only one person needs to do it.
 
 Loot council members will be see extra controls near each loot row and will be able to vote -
 ![loot log](https://octodex.github.com/E1ila/RaidLogger/imgs/loot-row-council.png)
@@ -49,7 +49,7 @@ As a one-time step, you need to do the following -
 
 #### Uploading
 
-**Do not forget to `/rl end` or you won't see the raid on the list**
+**Do not forget to `/rlog end` or you won't see the raid on the list**
 
 After exiting WoW, you may upload the attendance log to your guild's website.
 

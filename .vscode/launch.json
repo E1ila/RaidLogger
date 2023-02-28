@@ -9,7 +9,8 @@
             "request": "launch",
             "name": "Launch Program",
             "program": "${workspaceFolder}/export.js",
-            "args": ["upload", "gear", "http://localhost:3004/client/QOoF8Jj7MW2Ye2F8uTZlLFCHpqHL0jysQINiL3Y8", "--backup", "/Users/tal/tmp", "--retainlog"]
+            // "args": ["upload", "gear", "http://thelegendguild.com/client/QOoF8Jj7MW2Ye2F8uTZlLFCHpqHL0jysQINiL3Y8", "-c", "/Applications/wow/_classic_era_/Logs/WoWCombatLog-022023_213613-AQ40.txt", "--retainlog"]
+            "args": ["upload", "raid", "http://thelegendguild.com/client/QOoF8Jj7MW2Ye2F8uTZlLFCHpqHL0jysQINiL3Y8", "-c", "/Applications/wow/_classic_era_/Logs/WoWCombatLog-022023_213613-AQ40.txt", "--retainlog"]
         }
     ]
 }

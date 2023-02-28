@@ -98,16 +98,19 @@ function printUsageAndExit() {
  */
 function searchRecursive(dir, filename, scanBackwards) {
    let files = fs.readdirSync(dir);
+   // console.log(`scanning ${dir} ...`);
    for (let i = 0; i < files.length; i++) {
       let file = path.resolve(dir, files[i]);
-      let stat = fs.statSync(file);
-      if (path.basename(file).toLowerCase() === filename.toLowerCase())
-         return file;
-      if (!scanBackwards && stat.isDirectory()) {
-         file = searchRecursive(file, filename, scanBackwards);
-         if (file)
+      try {
+         let stat = fs.statSync(file);
+         if (path.basename(file).toLowerCase() === filename.toLowerCase())
             return file;
-      }
+         if (!scanBackwards && stat.isDirectory()) {
+            file = searchRecursive(file, filename, scanBackwards);
+            if (file)
+               return file;
+         }
+      } catch (e) { }
    }
    if (scanBackwards) {
       const nextDir = path.join(dir, '..');
@@ -173,7 +176,18 @@ function parseLua(lua) {
    return JSON.parse(json);
 }
 
-function readRaids(lua) {
+function fixPlayerMap(map, defaultRealm) {
+   if (defaultRealm) {
+      for (let name in map) {
+         if (name.indexOf('-') === -1) {
+            map[name + '-' + defaultRealm] = map[name];
+            delete map[name];
+         }
+      }
+   }
+}
+
+function readRaids(lua, defaultRealm) {
    let raids, classes, roster;
    let luaContent = fs.readFileSync(lua).toString('utf8');
    luaContent = luaContent.replace("Store = nil", "")
@@ -190,8 +204,16 @@ function readRaids(lua) {
          raids.splice(MAX_RAID_OPTIONS);
 
       raids.forEach(raid => {
-         raid['loot'] = Object.values(raid['loot']);
+      fixPlayerMap(raid.buffs, defaultRealm);
+      fixPlayerMap(raid.players, defaultRealm);
+         raid['loot'] = Object.values(raid['loot']).map(loot => {
+            if (defaultRealm && loot.player.indexOf('-') === -1)
+               loot.player += '-' + defaultRealm;
+            return loot;
+         });
       });
+
+      fixPlayerMap(classes, defaultRealm);
    } catch (e) {
       console.error(`Failed parsing LUA file: ${e.message}`);
       console.log(luaContent);
@@ -212,7 +234,8 @@ function getBuffString(playerClass, buffs) {
    Object.keys(buffs).forEach(spellId => {
       let minutes = buffs[spellId]
       if (!BUFFS[spellId]) {
-         console.error(`Missing buff info for spell ID ${spellId}`);
+         if (spellId != "present") // minutes of attendance
+            console.error(`Missing buff info for spell ID ${spellId}`);
       } else {
          if (!BUFFS[spellId].ignore || BUFFS[spellId].ignore.indexOf(playerClass) == -1)
             score += (BUFFS[spellId].onetime ? BUFFS[spellId].score : BUFFS[spellId].score * minutes);
@@ -393,10 +416,10 @@ async function browseLua(exportPath) {
    }
 }
 
-async function uploadRaids(apiEndpoint, backupPath, logs, gear, retainlog, choose, combatlogsPath) {
+async function uploadRaids(apiEndpoint, backupPath, logs, gear, retainlog, choose, combatlogsPath, defaultRealm) {
    try {
       let luaFile = findLuaFile()
-      const payload = readRaids(luaFile);
+      const payload = readRaids(luaFile, defaultRealm);
       let first = true;
       let raids;
 
@@ -428,18 +451,23 @@ async function uploadRaids(apiEndpoint, backupPath, logs, gear, retainlog, choos
          if (!raid.startTime)
             raid.startTime = (+moment(raid.date, 'YY-MM-DD HH:mm:ss')) / 1000;
 
-         console.log(`Uploading raid ${raidName(raid)} to ${apiEndpoint + "/raid"}...`)
-         const response = await request(apiEndpoint + "/raid", {
-            method: 'POST',
-            data: {
-               logs,
-               raid,
-               classes: first ? payload.classes : null,
-               roster: first ? payload.roster : null,
-            },
-         });
-         first = false;
-         handleServerResponse(response);
+         console.log(`Uploading raid ${raidName(raid)} to ${apiEndpoint + "/raid"}...`);
+         try {
+            const response = await request(apiEndpoint + "/raid", {
+               method: 'POST',
+               data: {
+                  logs,
+                  raid,
+                  classes: first ? payload.classes : null,
+                  roster: first ? payload.roster : null,
+               },
+            });
+            first = false;
+            handleServerResponse(response);
+         } catch (e) {
+            console.error(`Failed uploading raid: ${e.stack}`);
+            return;
+         }
       }
 
       if (gear && raids.length)
@@ -469,7 +497,7 @@ async function uploadGear(apiEndpoint, backupPath, retainlog, classes, raidInfo,
 
       const gear = {};
       for (let guid of Object.keys(players)) {
-         const name = players[guid].split("-")[0];
+         const name = players[guid]; //.split("-")[0];
          gear[name] = {class: classes[name], gear: playerGear[guid]};
       }
 
@@ -578,17 +606,18 @@ async function main() {
 
    program
       .command('upload <what> <url>')
-      .description('Uploads data to guild\'s website\n  <what>   raids / buffs\n  <url>    website API endpoint URL')
+      .description('Uploads data to guild\'s website\n  <what>   raid / raids / buffs / gear\n  <url>    website API endpoint URL')
       .option('--backup <path>', 'Back up files to this directory')
       .option('--gear', 'Parse and upload gear from WoWCombatLog.txt, will also backup/delete it')
       .option('--retainlog', 'Do not delete combat log')
       .option('--logs <url>', 'Link to raid logs')
       .option('-c, --combatlogs <url>', 'Location of combat logs')
+      .option('--realm <name>', 'Default realm to use for unrealmed player names', 'Firemaw')
       .action(async function (what, apiurl, options) {
          if (what === "raid")
-            await uploadRaids(apiurl, options.backup, options.logs, options.gear, options.retainlog, true, options.combatlogs);
+            await uploadRaids(apiurl, options.backup, options.logs, options.gear, options.retainlog, true, options.combatlogs, options.realm);
          else if (what === "raids")
-            await uploadRaids(apiurl, options.backup, options.logs, options.gear, options.retainlog, false, options.combatlogs);
+            await uploadRaids(apiurl, options.backup, options.logs, options.gear, options.retainlog, false, options.combatlogs, options.realm);
          else if (what === "buffs")
             await uploadBuffs(apiurl);
          else if (what === "gear")

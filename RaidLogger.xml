@@ -62,18 +62,10 @@
 
     <!-- Question Dialog -->
 
-    <Frame name="RaidLogger_QuestionDialog" frameStrata="DIALOG" parent="UIParent" enableMouse="true" movable="true">
+    <Frame name="RaidLogger_QuestionDialog" frameStrata="DIALOG" parent="UIParent" enableMouse="true" movable="true" inherits="BackdropTemplate">
         <Size>
             <AbsDimension x="250" y="100"/>
         </Size>
-        <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
-            <EdgeSize>
-                <AbsValue val="1"></AbsValue>
-            </EdgeSize>
-            <TileSize>
-                <AbsValue val="16" />
-            </TileSize>
-        </Backdrop>
         <Anchors>
             <Anchor point="CENTER">
                 <Offset>
@@ -83,6 +75,7 @@
         </Anchors>
         <Scripts>
             <OnLoad>
+                self:SetBackdrop ({bgFile = [[Interface\AddOns\RaidLogger\assets\background]], tile = true, tileSize = 16, insets = {left = 0, right = 0, top = 0, bottom = 0}})
                 self:SetBackdropColor (0, 0, 0, 0.9)
                 self:SetBackdropBorderColor(0, 0, 0, 1)
                 self:RegisterForDrag("LeftButton")
@@ -116,7 +109,7 @@
                 </Scripts>
             </Button>            <!--$parent_CloseButton-->
 
-            <Frame name="$parent_Title">
+            <Frame name="$parent_Title" inherits="BackdropTemplate">
                 <Size>
                     <AbsDimension x="120" y="20"/>
                 </Size>
@@ -132,16 +125,9 @@
                         </Offset>
                     </Anchor>
                 </Anchors>
-                <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
-                    <EdgeSize>
-                        <AbsValue val="1"></AbsValue>
-                    </EdgeSize>
-                    <TileSize>
-                        <AbsValue val="16" />
-                    </TileSize>
-                </Backdrop>
                 <Scripts>
                     <OnLoad>
+                        self:SetBackdrop ({bgFile = [[Interface\AddOns\FarmLog\assets\background]], tile = true, tileSize = 16, insets = {left = 0, right = 0, top = 0, bottom = 0}})
                         self:SetBackdropColor(0.5, 0.5, 0.5, 0.2)
                         self:SetBackdropBorderColor(0, 0, 0, 1)
                     </OnLoad>
@@ -206,7 +192,7 @@
 
 
 
-    <Frame name="RaidLogger_RaidWindow" parent="UIParent" frameStrata="HIGH" enableMouse="true" movable="true" resizable="true">
+    <Frame name="RaidLogger_RaidWindow" parent="UIParent" frameStrata="HIGH" enableMouse="true" movable="true" resizable="true" inherits="BackdropTemplate">
         <Size x="450" y="250" />
         <Anchors>
             <Anchor point="CENTER" />
@@ -215,16 +201,9 @@
             <minResize x="300" y="200" />
             <maxResize x="600" y="800" />
         </ResizeBounds>
-        <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
-            <EdgeSize>
-                <AbsValue val="1"></AbsValue>
-            </EdgeSize>
-            <TileSize>
-                <AbsValue val="16" />
-            </TileSize>
-        </Backdrop>
         <Scripts>
             <OnLoad>
+                self:SetBackdrop ({bgFile = [[Interface\AddOns\RaidLogger\assets\background]], tile = true, tileSize = 16, insets = {left = 0, right = 0, top = 0, bottom = 0}})
    			    self:SetBackdropColor (0.1, 0.1, 0.1, 0.9)
     		    self:SetBackdropBorderColor(0, 0, 0, 0.9)
             </OnLoad>
@@ -247,7 +226,7 @@
                 </Scripts>
             </Button>            <!--$parent_CloseButton-->
 
-            <Frame name="$parent_Title" enableMouse="true" movable="true" resizable="true">
+            <Frame name="$parent_Title" enableMouse="true" movable="true" resizable="true" inherits="BackdropTemplate">
                 <Size x="120" y="20" />
                 <Anchors>
                     <Anchor point="TOPLEFT" relativeTo="$parent" relativePoint="TOPLEFT">
@@ -261,16 +240,9 @@
                         </Offset>
                     </Anchor>
                 </Anchors>
-                <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
-                    <EdgeSize>
-                        <AbsValue val="1"></AbsValue>
-                    </EdgeSize>
-                    <TileSize>
-                        <AbsValue val="16" />
-                    </TileSize>
-                </Backdrop>
                 <Scripts>
                     <OnLoad>
+                        self:SetBackdrop ({bgFile = [[Interface\AddOns\RaidLogger\assets\background]], tile = true, tileSize = 16, insets = {left = 0, right = 0, top = 0, bottom = 0}})
        			        self:SetBackdropColor(0.5, 0.5, 0.5, 0.1)
         	        	self:SetBackdropBorderColor(0, 0, 0, 0)
                         self:RegisterForDrag("LeftButton")
@@ -294,7 +266,7 @@
                 </Layers>
             </Frame>            <!--$parent_Title-->
 
-            <Frame name="$parent_Buttons" enableMouse="true" movable="true" resizable="true">
+            <Frame name="$parent_Buttons" enableMouse="true" movable="true" resizable="true" inherits="BackdropTemplate">
                 <Size y="26" />
                 <Anchors>
                     <Anchor point="TOPLEFT" relativeTo="$parent_Title" relativePoint="BOTTOMLEFT">
@@ -304,33 +276,18 @@
                         <Offset x="0" y="-2" />
                     </Anchor>
                 </Anchors>
-                <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
-                    <EdgeSize>
-                        <AbsValue val="1" />
-                    </EdgeSize>
-                    <TileSize>
-                        <AbsValue val="16" />
-                    </TileSize>
-                </Backdrop>
                 <Scripts>
                     <OnLoad>
+                        self:SetBackdrop ({bgFile = [[Interface\AddOns\RaidLogger\assets\background]], tile = true, tileSize = 16, insets = {left = 0, right = 0, top = 0, bottom = 0}})
                         self:SetBackdropColor(0, 0, 0, 0.9)
         		        self:SetBackdropBorderColor(0, 0, 0, 0)
                     </OnLoad>
                 </Scripts>
                 <Frames>
-                    <Button name="$parent_LootTab">
+                    <Button name="$parent_LootTab" inherits="BackdropTemplate">
                         <Size>
                             <AbsDimension x="70" y="22"/>
                         </Size>
-                        <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
-                            <EdgeSize>
-                                <AbsValue val="1"></AbsValue>
-                            </EdgeSize>
-                            <TileSize>
-                                <AbsValue val="16" />
-                            </TileSize>
-                        </Backdrop>
                         <Anchors>
                             <Anchor point="BOTTOMLEFT" x="8" y="0" />
                         </Anchors>
@@ -346,6 +303,7 @@
                         </Layers>
                         <Scripts>
                             <OnLoad>
+                                self:SetBackdrop ({bgFile = [[Interface\AddOns\RaidLogger\assets\background]], tile = true, tileSize = 16, insets = {left = 0, right = 0, top = 0, bottom = 0}})
             				    self:RegisterForClicks("LeftButtonUp", "RightButtonUp")
                                 self.label = RaidLogger_RaidWindow_Buttons_LootTab_Text
                                 self.selected = true 
@@ -362,18 +320,10 @@
                         </Scripts>
                     </Button>                    <!--$parent_LootTab-->
 
-                    <Button name="$parent_PlayersTab">
+                    <Button name="$parent_PlayersTab" inherits="BackdropTemplate">
                         <Size>
                             <AbsDimension x="70" y="22"/>
                         </Size>
-                        <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
-                            <EdgeSize>
-                                <AbsValue val="1"></AbsValue>
-                            </EdgeSize>
-                            <TileSize>
-                                <AbsValue val="16" />
-                            </TileSize>
-                        </Backdrop>
                         <Anchors>
                             <Anchor point="BOTTOMLEFT" relativeTo="$parent_LootTab" relativePoint="BOTTOMRIGHT" x="8" y="0" />
                         </Anchors>
@@ -389,6 +339,7 @@
                         </Layers>
                         <Scripts>
                             <OnLoad>
+                                self:SetBackdrop ({bgFile = [[Interface\AddOns\RaidLogger\assets\background]], tile = true, tileSize = 16, insets = {left = 0, right = 0, top = 0, bottom = 0}})
             				    self:RegisterForClicks("LeftButtonUp", "RightButtonUp")
                                 self.label = RaidLogger_RaidWindow_Buttons_PlayersTab_Text
                             </OnLoad>
@@ -404,18 +355,10 @@
                         </Scripts>
                     </Button>                    <!--$parent_PlayersTab-->
 
-                    <Button name="$parent_RaidsTab">
+                    <Button name="$parent_RaidsTab" inherits="BackdropTemplate">
                         <Size>
                             <AbsDimension x="70" y="22"/>
                         </Size>
-                        <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
-                            <EdgeSize>
-                                <AbsValue val="1"></AbsValue>
-                            </EdgeSize>
-                            <TileSize>
-                                <AbsValue val="16" />
-                            </TileSize>
-                        </Backdrop>
                         <Anchors>
                             <Anchor point="BOTTOMLEFT" relativeTo="$parent_PlayersTab" relativePoint="BOTTOMRIGHT" x="8" y="0" />
                         </Anchors>
@@ -431,6 +374,7 @@
                         </Layers>
                         <Scripts>
                             <OnLoad>
+                                self:SetBackdrop ({bgFile = [[Interface\AddOns\RaidLogger\assets\background]], tile = true, tileSize = 16, insets = {left = 0, right = 0, top = 0, bottom = 0}})
             				    self:RegisterForClicks("LeftButtonUp", "RightButtonUp")
                                 self.label = RaidLogger_RaidWindow_Buttons_RaidsTab_Text
                             </OnLoad>
@@ -446,7 +390,7 @@
                         </Scripts>
                     </Button>                    <!--$parent_RaidsTab-->
 
-                    <Button name="RaidLogger_EndRaidButton">
+                    <Button name="RaidLogger_EndRaidButton" inherits="BackdropTemplate">
                         <Size>
                             <AbsDimension x="16" y="16"/>
                         </Size>
@@ -474,7 +418,7 @@
                         </Scripts>
                     </Button>                    <!--RaidLogger_EndRaidButton-->
 
-                    <Button name="RaidLogger_DiscardRaidButton">
+                    <Button name="RaidLogger_DiscardRaidButton" inherits="BackdropTemplate">
                         <Size>
                             <AbsDimension x="16" y="16"/>
                         </Size>
@@ -505,7 +449,7 @@
                 </Frames>
             </Frame>            <!--$parent_Buttons-->
 
-            <Button name="$parent_Resize">
+            <Button name="$parent_Resize" inherits="BackdropTemplate">
                 <Size x="16" y="16" />
                 <Anchors>
                     <Anchor point="BOTTOMLEFT">
@@ -577,20 +521,12 @@
                                 </Layers>
                             </Frame>
 
-                            <EditBox name="RaidLogger_Loot_SearchBox" letters="80" autoFocus="false">
+                            <EditBox name="RaidLogger_Loot_SearchBox" letters="80" autoFocus="false" inherits="BackdropTemplate">
                                 <Size x="150" y="20" />
                                 <Anchors>
                                     <Anchor point="LEFT" relativePoint="RIGHT" relativeTo="RaidLogger_DisplayLootFilter" />
                                     <Anchor point="TOP" y="-3" />
                                 </Anchors>
-                                <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
-                                    <EdgeSize>
-                                        <AbsValue val="1"></AbsValue>
-                                    </EdgeSize>
-                                    <TileSize>
-                                        <AbsValue val="16" />
-                                    </TileSize>
-                                </Backdrop>
                                 <Layers>
                                     <Layer level="BACKGROUND">
                                         <Texture file="Interface\AddOns\RaidLogger\assets\search" alphaMode="ADD">
@@ -604,6 +540,7 @@
                                 </Layers>
                                 <Scripts>
                                     <OnLoad>
+                                        self:SetBackdrop ({bgFile = [[Interface\AddOns\RaidLogger\assets\background]], tile = true, tileSize = 16, insets = {left = 0, right = 0, top = 0, bottom = 0}})
                                         self:SetBackdropColor(0, 0, 0, 0.8)
             	                    	self:SetBackdropBorderColor(0.5, 0.5, 0.5, 0.3)
                                     </OnLoad>
@@ -657,20 +594,12 @@
                             </OnLoad>
                         </Scripts>
                         <Frames>
-                            <EditBox name="RaidLogger_Players_SearchBox" letters="80" autoFocus="false">
+                            <EditBox name="RaidLogger_Players_SearchBox" letters="80" autoFocus="false" inherits="BackdropTemplate">
                                 <Size x="150" y="20" />
                                 <Anchors>
                                     <Anchor point="LEFT" relativePoint="LEFT" relativeTo="RaidLogger_RaidWindow_PlayersTab" />
                                     <Anchor point="TOP" y="-1" />
                                 </Anchors>
-                                <Backdrop bgFile="Interface/Buttons/WHITE8X8" edgeFile="Interface/Buttons/WHITE8X8" tile="true">
-                                    <EdgeSize>
-                                        <AbsValue val="1"></AbsValue>
-                                    </EdgeSize>
-                                    <TileSize>
-                                        <AbsValue val="16" />
-                                    </TileSize>
-                                </Backdrop>
                                 <Layers>
                                     <Layer level="BACKGROUND">
                                         <Texture file="Interface\AddOns\RaidLogger\assets\search" alphaMode="ADD">
@@ -684,6 +613,7 @@
                                 </Layers>
                                 <Scripts>
                                     <OnLoad>
+                                        self:SetBackdrop ({bgFile = [[Interface\AddOns\RaidLogger\assets\background]], tile = true, tileSize = 16, insets = {left = 0, right = 0, top = 0, bottom = 0}})
                                         self:SetBackdropColor(0, 0, 0, 0.8)
             	                    	self:SetBackdropBorderColor(0.5, 0.5, 0.5, 0.3)
                                     </OnLoad>

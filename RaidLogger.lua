@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 2.0017
+local VERSION = 2.18
 local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
@@ -21,9 +21,9 @@ local TRACKED_INSTANCES = {
     [3] = "Onyxia's Lair",
     [4] = "Ahn'Qiraj",
     [5] = "Naxxramas",
-    -- [6] = "Zul'Gurub",
-    -- [7] = "Ruins of Ahn'Qiraj",
-    -- [8] = "Ragefire Chasm",
+    [6] = "Zul'Gurub",
+    [7] = "Ruins of Ahn'Qiraj",
+    [8] = "Ragefire Chasm",
 }
 
 local CLASS_COLOR = {
@@ -406,7 +406,7 @@ function RaidLogger_Commands(msg)
         out("  |cFF00FF00/rlog start|r - start logging a raid or update existing one.")
         out("  |cFF00FF00/rlog sand <channel>|r - print a list of players who picked [Hourglass Sand]. Channel can be raid/yell/guild or empty for say.")
         out("  |cFF00FF00/rlog ping|r - check who's on your sync channel.")
-        out("  |cFF00FF00/rlog sync <password>|r - sets sync channel. Leave <password> empty to print the password.")
+        out("  |cFF00FF00/rlog password <password>|r - sets sync channel. Leave <password> empty to print the password.")
         out("  |cFF00FF00/rlog resync <player>|r - requests for full loot re-sync from <player>, make sure he's in your sync channel.")
     elseif  "LOG" == cmd then
         if not RaidLoggerStore.activeRaid then 
@@ -441,7 +441,7 @@ function RaidLogger_Commands(msg)
         else
             err("Missing player name!")
         end
-    elseif  "SYNC" == cmd then
+    elseif  "PASSWORD" == cmd then
         if arg1 and string.len(arg1) > 0 then
             if string.len(arg1) > 6 then 
                 return out("Password is too long! Max length is 6 characters.")
@@ -1341,7 +1341,7 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
     row.entry = entry 
 
 	if not row.root then 
-		row.root = CreateFrame("FRAME", nil, self.scrollContent);		
+		row.root = CreateFrame("FRAME", nil, self.scrollContent, "BackdropTemplate");		
 		-- row.root:SetWidth(self.scrollContent:GetWidth() - 20);
         row.root:SetHeight(27);
         row.root:SetBackdrop({bgFile = "Interface/Tooltips/UI-Tooltip-Background"})
@@ -1359,13 +1359,13 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
     local playerDropdownOffX = -24
 
     if not row.statusImage then 
-        row.statusFrame = CreateFrame("FRAME", nil, row.root);
+        row.statusFrame = CreateFrame("FRAME", nil, row.root, "BackdropTemplate");
         row.statusFrame:SetSize(16, 16)
         row.statusFrame:SetPoint("LEFT", 46, 0)  
         row.statusFrame:SetScript("OnLeave", function(self)
             GameTooltip_Hide()
         end);	
-        row.statusImage = CreateFrame("BUTTON", nil, row.statusFrame);
+        row.statusImage = CreateFrame("BUTTON", nil, row.statusFrame, "BackdropTemplate");
         row.statusImage:RegisterForClicks("AnyUp")
         row.statusImage:SetAllPoints(row.statusFrame)
     end 
@@ -1581,7 +1581,7 @@ function RaidLogger_RaidWindow_PlayersTab:AddRow(player, status)
 	local row = existingRow or {};
 
 	if not row.root then 
-		row.root = CreateFrame("FRAME", nil, self.scrollContent);		
+		row.root = CreateFrame("FRAME", nil, self.scrollContent, "BackdropTemplate");		
 		-- row.root:SetWidth(self.scrollContent:GetWidth() - 20);
         row.root:SetHeight(28);
         row.root:SetBackdrop({bgFile = "Interface/Tooltips/UI-Tooltip-Background"})
@@ -1685,7 +1685,7 @@ function RaidLogger_RaidWindow_RaidsTab:AddRow(raid, raidIndex)
 	local row = existingRow or {};
 
 	if not row.root then 
-		row.root = CreateFrame("BUTTON", nil, self.scrollContent);		
+		row.root = CreateFrame("BUTTON", nil, self.scrollContent, "BackdropTemplate");		
 		-- row.root:SetWidth(self.scrollContent:GetWidth() - 20);
         row.root:SetHeight(28);
         row.root:SetBackdrop({bgFile = "Interface/Tooltips/UI-Tooltip-Background"})
