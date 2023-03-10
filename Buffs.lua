@@ -1,5 +1,55 @@
 local BUFFS = {
     ["22888"] = {
+        name = "Sayge's Dark Fortune of Damage",
+        desc = "DMF Damage",
+        type = "World"
+     },
+     ["23736"] = {
+        name = "Sayge's Dark Fortune of Agility",
+        desc = "DMF Agility",
+        type = "World"
+     },
+     ["23766"] = {
+        name = "Sayge's Dark Fortune of Intelligence",
+        desc = "DMF Intelligence",
+        type = "World"
+     },
+     ["23735"] = {
+        name = "Sayge's Dark Fortune of Strength",
+        desc = "DMF Strength",
+        type = "World",
+     },
+     ["23769"] = {
+        name = "Sayge's Dark Fortune of Resistance",
+        desc = "DMF Resistance",
+        type = "World",
+     },
+     ["23737"] = {
+        name = "Sayge's Dark Fortune of Stamina",
+        desc = "DMF Stamina",
+        type = "World"
+     },
+     ["23738"] = {
+        name = "Sayge's Dark Fortune of Spirit",
+        desc = "DMF Spirit",
+        type = "World"
+     },
+     ["23767"] = {
+        name = "Sayge's Dark Fortune of Armor",
+        desc = "DMF Armor",
+        type = "World"
+     },
+    ["10669"] = {
+        name = "Strike of the Scorpok (25 agi)",
+        desc = "Ground Scorpok Assay",
+        type = "Consumable"
+     },
+     ["10667"] = {
+        name = "Rage of Ages (25 str)",
+        desc = "R.O.I.D.S.",
+        type = "Consumable"
+     },
+     ["22888"] = {
         name = "Rallying Cry of the Dragonslayer",
         desc = "Dragonslayer",
         type = "World"
