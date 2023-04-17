@@ -1154,6 +1154,11 @@ function RaidLoggerFrame:OnEvent(event, arg1, ...)
             else
                 EndRaidReminder();
             end
+        else 
+            -- every palyer that's added, check if raid has enough members to start logging
+            if InTrackedInstance() and GetNumRaidMembers() >= MIN_RAID_PLAYERS then
+                RaidLogger:UpdateRaid()
+            end
         end
     elseif event == "CHAT_MSG_ADDON" and RaidLoggerStore.sync then
         if arg1 == ADDON_PREFIX..RaidLoggerStore.sync then 

@@ -1,5 +1,5 @@
 module.exports = {
-   "22888": {
+   "23768": {
       "name": "Sayge's Dark Fortune of Damage",
       "desc": "DMF Damage",
       "type": "World",
