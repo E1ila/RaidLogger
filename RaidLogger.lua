@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 2.18
+local VERSION = 2.2
 local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
