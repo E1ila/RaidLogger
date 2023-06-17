@@ -330,10 +330,18 @@ local BUFFS = {
     },
 }
 
+local function FixPlayerRealm(player)
+    if not string.find(player, "-") then 
+        return player.."-"..GetRealmName()
+    end
+    return player
+end
+
 function RaidLogger_CheckBuffs(players)
     for i = 1, 40 do
         name, _, group = GetRaidRosterInfo(i)
         if name then
+            name = FixPlayerRealm(name)
             if not players[name] then players[name] = {} end 
             RaidLogger_CheckUnitBuffs(players[name], "raid" .. i) 
             players[name]["present"] = (players[name]["present"] or 0) + 1

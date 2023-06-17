@@ -730,6 +730,7 @@ function RaidLogger:UpdateRaid(forceZone)
     for i = 1, raidSize do
         local name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML = GetRaidRosterInfo(i)
         if name then
+            name = FixPlayerRealm(name)
             RaidLogger:LogAttended(name)
             RaidLoggerStore.players[name] = class
         end

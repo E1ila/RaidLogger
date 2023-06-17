@@ -5,7 +5,7 @@
 
 const
    MAX_RAID_OPTIONS = 20,
-   USE_LAST_RAID = false,
+   USE_LAST_RAID = true,
    ZONE_SHORT_NAME = {
       "Onyxia's Lair": "Onyxia",
       "The Molten Core": "MC",
@@ -322,9 +322,10 @@ function handleServerResponse(response, debugObj) {
    }
 }
 
-async function browseLua(exportPath) {
+async function browseLua(exportPath, luaFile) {
    try {
-      let luaFile = findLuaFile()
+      if (!luaFile)
+         luaFile = findLuaFile()
 
       const { raids, classes } = readRaids(luaFile);
       let raidOptions = raids.map(o => raidName(o));
@@ -391,7 +392,7 @@ async function browseLua(exportPath) {
          if (o['de'])
             return `${colorGreen}Disenchanted ${qualityColor[o['quality']]}[${o['item']}]${nocolor}`;
          else
-            return `${playerColor(classes[o['player']])}${o['player']} ${colorGreen}received ${qualityColor[o['quality']]}[${o['item']}]${nocolor}`;
+            return `${playerColor(classes[o['tradedTo'] || o['player']])}${o['tradedTo'] || o['player']} ${colorGreen}received ${qualityColor[o['quality']]}[${o['item']}]${nocolor}`;
       }).join('\n  ')}${nocolor}\n`);
 
       const raidDateParts = raid['date'].split(' ')[0].split('-');
@@ -418,9 +419,11 @@ async function browseLua(exportPath) {
    }
 }
 
-async function uploadRaids(apiEndpoint, backupPath, logs, gear, retainlog, choose, combatlogsPath, defaultRealm) {
+async function uploadRaids(apiEndpoint, luaFile, backupPath, logs, gear, retainlog, choose, combatlogsPath, defaultRealm) {
    try {
-      let luaFile = findLuaFile()
+      if (!luaFile)
+         luaFile = findLuaFile()
+
       const payload = readRaids(luaFile, defaultRealm);
       let first = true;
       let raids;
@@ -479,7 +482,7 @@ async function uploadRaids(apiEndpoint, backupPath, logs, gear, retainlog, choos
    }
 }
 
-async function uploadGear(apiEndpoint, backupPath, retainlog, classes, raidInfo, combatlogsPath) {
+async function uploadGear(apiEndpoint, luaFile, backupPath, retainlog, classes, raidInfo, combatlogsPath) {
    try {
       const logFile = combatlogsPath || findLogFile(true);
 
@@ -487,7 +490,8 @@ async function uploadGear(apiEndpoint, backupPath, retainlog, classes, raidInfo,
          return;
 
       if (!classes) {
-         let luaFile = findLuaFile()
+         if (!luaFile)
+            luaFile = findLuaFile()
          const payload = readRaids(luaFile);
          classes = payload.classes;
       }
@@ -600,9 +604,10 @@ async function main() {
    program
       .command('browse')
       .description('Browse raids in LUA')
+      .option("-l, --lua <file>", "Full path to RaidLogger.lua saved vadiables", ".")
       .option("-e, --export <exportPath>", "Path to export data", ".")
       .action(async function (options) {
-         await browseLua(options['exportPath']);
+         await browseLua(options['exportPath'], options['lua']);
          console.log('Done.');
       });
 
@@ -615,15 +620,16 @@ async function main() {
       .option('--logs <url>', 'Link to raid logs')
       .option('-c, --combatlogs <url>', 'Location of combat logs')
       .option('--realm <name>', 'Default realm to use for unrealmed player names', 'Firemaw')
+      .option("-l, --lua <file>", "Full path to RaidLogger.lua saved vadiables", ".")
       .action(async function (what, apiurl, options) {
          if (what === "raid")
-            await uploadRaids(apiurl, options.backup, options.logs, options.gear, options.retainlog, true, options.combatlogs, options.realm);
+            await uploadRaids(apiurl, options.lua, options.backup, options.logs, options.gear, options.retainlog, true, options.combatlogs, options.realm);
          else if (what === "raids")
-            await uploadRaids(apiurl, options.backup, options.logs, options.gear, options.retainlog, false, options.combatlogs, options.realm);
+            await uploadRaids(apiurl, options.lua, options.backup, options.logs, options.gear, options.retainlog, false, options.combatlogs, options.realm);
          else if (what === "buffs")
             await uploadBuffs(apiurl);
          else if (what === "gear")
-            await uploadGear(apiurl, options.backup, options.retainlog, undefined, undefined, options.combatlogs);
+            await uploadGear(apiurl, options.lua, options.backup, options.retainlog, undefined, undefined, options.combatlogs);
          console.log('Done.');
       });
 
