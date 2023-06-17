@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 2.2
+local VERSION = 2.3
 local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
@@ -14,16 +14,17 @@ local ADDON_PREFIX = "RaidLogger"
 -- local HOURGLASS_SAND_NAME = "Linen Cloth"
 local HOURGLASS_SAND_NAME = "Hourglass Sand"
 local ACTIVE_RAID_TIMEOUT = 3600 * 12
+local QUALITY_TO_LOG = 2 -- 3 RARE
 
 local TRACKED_INSTANCES = {
-    [1] = "The Molten Core",
-    [2] = "Blackwing Lair",
-    [3] = "Onyxia's Lair",
-    [4] = "Ahn'Qiraj",
-    [5] = "Naxxramas",
-    [6] = "Zul'Gurub",
-    [7] = "Ruins of Ahn'Qiraj",
-    [8] = "Ragefire Chasm",
+    [409] = "The Molten Core",
+    [469] = "Blackwing Lair",
+    [249] = "Onyxia's Lair",
+    [531] = "Ahn'Qiraj",
+    [533] = "Naxxramas",
+    [309] = "Zul'Gurub",
+    [509] = "Ruins of Ahn'Qiraj",
+    [389] = "Ragefire Chasm",
 }
 
 local CLASS_COLOR = {
@@ -121,6 +122,8 @@ local firstSyncMismatch = 0
 local lootMismatchs = 0
 local outOfSync = false
 local syncingNow = false
+local tradedItems = {}
+local tradingWith = nil
 
 RaidLoggerDelayedMessages = {}
 RaidLoggerPendingLoot = {}
@@ -160,6 +163,10 @@ local function normalizeLink(link)
 	parts[10] = "_"
 	return table.concat(parts, ":") 
 end 
+
+local function getSelfPlayerName()
+    return UnitName("player").."-"..GetRealmName()
+end
 
 local function removeRealmName(playerRealmName) 
     local nameParts = {_G.string.split("-", playerRealmName)}
@@ -239,9 +246,9 @@ end
 
 local function InTrackedInstance()
     if not IsInInstance() then return nil end
-    local zone = GetZoneText()
-    if tableTextLookup(TRACKED_INSTANCES, zone) then return zone end
-    return nil
+    local name, _, _, _, _, _, _, mapID, _ = GetInstanceInfo()
+    if TRACKED_INSTANCES[mapID] then return name, mapID end
+    return nil, nil
 end
 
 local function ConcatPlayers(tab, filter) 
@@ -262,8 +269,15 @@ local function FixPlayerName(player)
     return TitleCase(string.sub(player, 1, 1), string.sub(player, 2))
 end
 
+local function FixPlayerRealm(player)
+    if not string.find(player, "-") then 
+        return player.."-"..GetRealmName()
+    end
+    return player
+end
+
 local function ColorName(who)
-    return CLASS_COLOR[RaidLoggerStore.players[who] or "Unknown"] .. who .. "|r"
+    return (CLASS_COLOR[RaidLoggerStore.players[who] or "Unknown"] or CLASS_COLOR["Unknown"]) .. who .. "|r"
 end 
 
 local function GetNumRaidMembers() 
@@ -294,6 +308,7 @@ end
 local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
     -- local vStartIndex, vEndIndex, vLinkColor, vItemCode, vItemEnchantCode, vItemSubCode, vUnknownCode, vItemName = strfind(loot, "|c(%x+)|Hitem:(%d+):(%d+):(%d+):(%d+)|h%[([^%]]+)%]|h|r");
     local itemName, itemLink, quality, _, _, itemType, _, _, _, _, vendorPrice = GetItemInfo(loot);
+    who = FixPlayerRealm(who)
 
     if not itemLink then
         debug("Adding item to RaidLoggerPendingLoot - "..who..","..loot..","..quantity)
@@ -324,7 +339,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
         RaidLoggerStore.activeRaid.sands[who] = (RaidLoggerStore.activeRaid.sands[who] or 0) + 1
     end 
 
-    if who and quality >= QUALITY_RARE then
+    if who and quality >= QUALITY_TO_LOG then
         out("Logged loot: " .. ColorName(who) .. " received " .. itemLink)
         local entry = {
             player = who,
@@ -360,6 +375,7 @@ local LootSelfMsgStrings = {
 }
 
 function RaidLogger:ParseLootMessage(msg, zone)
+    debug("ParseLootMessage "..msg)
 	for _, st in ipairs(LootMsgStrings) do
 		local player, link, quantity = RaidLoggerDeformat(msg, st)
 		if player and link then 
@@ -477,7 +493,7 @@ function RaidLogger_Commands(msg)
         end 
     elseif  "PING" == cmd then 
         out("Sending PING query...")
-        RaidLogger:Post(0, sender, SYNC_PING)
+        RaidLogger:Post(0, nil, SYNC_PING)
     elseif  "SAND" == cmd then 
         if not editRaid.sands then 
             out("No sands log in selected raid.")
@@ -651,6 +667,7 @@ function RaidLogger:LogBenched(player)
 end
 
 function RaidLogger:LogAttended(player)
+    player = FixPlayerRealm(player)
     if RaidLoggerStore.activeRaid.players[player] ~= STATE_ATTENDED then 
         out("Logging attendance for " .. ColorName(player))
         RaidLoggerStore.activeRaid.players[player] = STATE_ATTENDED
@@ -693,13 +710,15 @@ function RaidLogger:UpdateRaid(forceZone)
 
     if forceZone and #forceZone > 2 then 
         RaidLoggerStore.activeRaid.zone = forceZone
+        RaidLoggerStore.activeRaid.zoneid = "0"
     end 
 
     -- save zone
     if not RaidLoggerStore.activeRaid.zone then
-        local zone = InTrackedInstance()
+        local zone, zoneId = InTrackedInstance()
         if zone then
             RaidLoggerStore.activeRaid.zone = zone
+            RaidLoggerStore.activeRaid.zoneId = zoneId
             RaidLogger_RaidWindow:Refresh()
             out("Zone: " .. COLOR_INSTANCE .. zone)
         else
@@ -738,11 +757,77 @@ end
 
 
 -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--   TRADE
+
+function RaidLogger:OnTradeShow()
+    -- reset list
+    tradedItems = {}
+    local name, realm = UnitName("npc")
+    tradingWith = name.."-"..(realm or GetRealmName())
+end
+
+function RaidLogger:OnTradePlayerItemChanged(tradeSlotIndex)
+    local ItemName, _, Quantity, _, Enchantment = GetTradePlayerItemInfo(tradeSlotIndex)
+    if not ItemName then
+        -- debug("Clearing slot "..tradeSlotIndex)
+		tradedItems[tradeSlotIndex] = nil
+		return
+	end
+
+    local itemLink = normalizeLink(GetTradePlayerItemLink(tradeSlotIndex))
+    local itemString = ItemStringFromLink(itemLink)
+    local found = nil
+    local selfPlayerName = getSelfPlayerName();
+    -- debug("itemLink "..itemLink)
+    -- debug("itemString "..itemString)
+
+    for i = #RaidLoggerStore.activeRaid.loot, 1, -1 do 
+        local loggedItem = RaidLoggerStore.activeRaid.loot[i]
+        -- debug("Checking dup with - "..loggedItem.lootid..","..loggedItem.itemString)
+        if loggedItem.itemString == itemString and (not loggedItem.tradedTo or loggedItem.tradedTo == selfPlayerName) then 
+            found = i
+        end
+    end
+    if not found then 
+        err("Item "..itemLink.." on slot "..tradeSlotIndex.." is not in our list of logged loot!")
+        tradedItems[tradeSlotIndex] = nil
+        return 
+    end 
+        
+    debug("Found trade of logged item #"..found..": ".. itemLink)
+    tradedItems[tradeSlotIndex] = found
+end
+
+function RaidLogger:OnTradeAcceptUpdate()
+    for i = 1, 6 do
+        RaidLogger:OnTradePlayerItemChanged(i)
+    end
+end
+
+function RaidLogger:OnUiInfoMessage(errorType, message) 
+    -- debug("Trade UI message: "..message)
+    -- debug("Trading with: "..tradingWith)
+    if message == ERR_TRADE_COMPLETE and tradingWith then
+        for k, i in pairs(tradedItems) do
+            if i then 
+                debug("Trade completed - changing item "..i.." to "..tradingWith)
+                local loggedItem = RaidLoggerStore.activeRaid.loot[i]            
+                loggedItem.tradedTo = tradingWith 
+                local row = self:FindRow(loggedItem.lootid)
+                RaidLogger_RaidWindow_LootTab:TradedToChanged(row, loggedItem)
+                RaidLogger:Post(1, nil, SYNC_SUGGEST, loggedItem.lootid, loggedItem.itemString, loggedItem.tradedTo)
+            end
+        end
+    end
+end
+
+
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 --   SYNC
 
 function RaidLogger:OnAddonMessage(text, channel, sender, target)
-    sender = removeRealmName(sender)
-    if sender == UnitName("player") then return end 
+    -- sender = removeRealmName(sender)
+    if sender == getSelfPlayerName() then return end 
     local parts = splitCsv(text)
     debug("SYNC IN - ["..sender.."]: "..text)
 
@@ -810,7 +895,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
                         votes[voteParts[1]] = tonumber(voteParts[2])
                     end 
                 end 
-                debug("who="..who.." itemString="..itemString.." quantity="..quantity.." ts="..ts.." tradedTo="..tostring(tradedTo).." lootid="..(lootid or "nil"))
+                debug("SYNC LOOT who="..who.." itemString="..itemString.." quantity="..quantity.." ts="..ts.." tradedTo="..tostring(tradedTo).." lootid="..(lootid or "nil"))
                 LogLoot(who, itemString, quantity, ts, tradedTo, votes, status, lootid)
             end 
 
@@ -908,7 +993,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         lootMismatchs = 0
         self:ScheduleSyncCheck() -- reset check timer
         if RaidLoggerStore.activeRaid and RaidLoggerStore.activeRaid.loot and not syncingNow then 
-            self:Post(1, nil, SYNC_CHECK_REPLY, #RaidLoggerStore.activeRaid.loot, RaidLoggerStore.activeRaid.zone or "")
+            self:Post(1, nil, SYNC_CHECK_REPLY, #RaidLoggerStore.activeRaid.loot, ""..RaidLoggerStore.activeRaid.zoneId or "")
         end 
 
     elseif parts[1] == SYNC_CHECK_REPLY then 
@@ -916,7 +1001,7 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         local lootCount = tonumber(parts[2])
 
         -- start a raid
-        if not RaidLoggerStore.activeRaid or RaidLoggerStore.activeRaid.zone ~= parts[3] or syncingNow then 
+        if not RaidLoggerStore.activeRaid or ""..RaidLoggerStore.activeRaid.zoneId ~= parts[3] or syncingNow then 
             return 
         end
 
@@ -1168,6 +1253,14 @@ function RaidLoggerFrame:OnEvent(event, arg1, ...)
         if arg1 == ADDON_PREFIX..RaidLoggerStore.sync then 
             RaidLogger:OnAddonMessage(...)
         end 
+    elseif event == "UI_INFO_MESSAGE" then 
+        RaidLogger:OnUiInfoMessage(arg1, ...)
+    elseif event == "TRADE_SHOW" and RaidLoggerStore.activeRaid then
+        RaidLogger:OnTradeShow()
+    elseif event == "TRADE_PLAYER_ITEM_CHANGED" and RaidLoggerStore.activeRaid then
+        -- RaidLogger:OnTradePlayerItemChanged(arg1)
+    elseif event == "TRADE_ACCEPT_UPDATE" and RaidLoggerStore.activeRaid then
+        RaidLogger:OnTradeAcceptUpdate()
     end
 end
 

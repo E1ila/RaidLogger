@@ -348,6 +348,7 @@ async function browseLua(exportPath) {
 
       const raid = raids[answerIndex];
 
+      // console.log(JSON.stringify(raid));
       let attendedPlayers = [];
       if (raid['attended'])
          attendedPlayers = Object.values(raid['attended']).sort(sortPlayerByClass(classes));
@@ -356,8 +357,9 @@ async function browseLua(exportPath) {
 
       if (raid.buffs) {
          attendedPlayers = attendedPlayers
-            .map(p => ({ p, buffs: raid.buffs && getBuffString(classes[p], raid.buffs[p]) }))
-            .sort((a, b) => b.buffs.score - a.buffs.score)
+            .filter(p => raid.buffs[p])
+            .map(p => ({ p, buffs: raid.buffs && raid.buffs[p] && getBuffString(classes[p], raid.buffs[p]) }))
+            .sort((a, b) => (b.buffs && b.buffs.score || 0) - (a.buffs && a.buffs.score || 0))
             .map(o => `  ${playerColor(classes[o.p])}${o.p.padEnd(12, ' ')}${nocolor} ${o.buffs.text}`)
             .join('\n  ');
          console.log(`\nParticipants:\n  ${attendedPlayers}${nocolor}\n`);
