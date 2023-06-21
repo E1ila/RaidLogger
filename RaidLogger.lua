@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 2.3
+local VERSION = 2.6
 local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
@@ -14,7 +14,6 @@ local ADDON_PREFIX = "RaidLogger"
 -- local HOURGLASS_SAND_NAME = "Linen Cloth"
 local HOURGLASS_SAND_NAME = "Hourglass Sand"
 local ACTIVE_RAID_TIMEOUT = 3600 * 12
-local QUALITY_TO_LOG = 2 -- 3 RARE
 
 local TRACKED_INSTANCES = {
     [409] = "The Molten Core",
@@ -132,6 +131,7 @@ RaidLoggerStore = {
     raids = {},
     activeRaid = nil,
     players = {},
+    qualityToLog = QUALITY_RARE,
 }
 
 RaidLogger = {}
@@ -339,7 +339,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
         RaidLoggerStore.activeRaid.sands[who] = (RaidLoggerStore.activeRaid.sands[who] or 0) + 1
     end 
 
-    if who and quality >= QUALITY_TO_LOG then
+    if who and quality >= RaidLoggerStore.qualityToLog then
         out("Logged loot: " .. ColorName(who) .. " received " .. itemLink)
         local entry = {
             player = who,
@@ -362,6 +362,8 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
             local count = #RaidLoggerStore.activeRaid.loot
             RaidLogger:PostLootEntry(entry, count.."/"..count, 3, nil)
         end 
+    else 
+        debug("Ignoring loot: " .. ColorName(who) .. " received " .. itemLink)
     end
 end
 
@@ -375,7 +377,7 @@ local LootSelfMsgStrings = {
 }
 
 function RaidLogger:ParseLootMessage(msg, zone)
-    debug("ParseLootMessage "..msg)
+    -- debug("ParseLootMessage "..msg)
 	for _, st in ipairs(LootMsgStrings) do
 		local player, link, quantity = RaidLoggerDeformat(msg, st)
 		if player and link then 
@@ -417,6 +419,7 @@ function RaidLogger_Commands(msg)
         out("  |cFF00FF00/rlog|r - show UI")
         out("  |cFF00FF00/rlog |cFF00ff95a|cFF00FF00dd <player>|r - manually log an attended player.")
         out("  |cFF00FF00/rlog |cFF00ff95b|cFF00FF00ench <player>|r - log a benched player.")
+        out("  |cFF00FF00/rlog |cFF00ff95q|cFF00FF00uality <1-5>|r - set minimum level of loot quality to log. ("..QUALITY_TEXT[RaidLoggerStore.qualityToLog]..")")
         out("  |cFF00FF00/rlog log <itemlink> <receiver>|r - manually add looted item.")
         out("  |cFF00FF00/rlog de|r - marks last distributed loot item as disenchanted.")
         out("  |cFF00FF00/rlog os|r - marks last distributed loot as an off-spec item.")
@@ -545,6 +548,13 @@ function RaidLogger_Commands(msg)
             RaidLogger:LogAttended(FixPlayerName(arg1))
         else
             err("Missing player name!")
+        end
+    elseif  "Q" == cmd or "QUALITY" == cmd then
+        if arg1 and string.len(arg1) > 0 then
+            RaidLoggerStore.qualityToLog = tonumber(arg1)
+            out("Minimum quality to log changed to |cff00ff00"..QUALITY_TEXT[RaidLoggerStore.qualityToLog])
+        else
+            out("Current miniimum quality to log: |cff00ff00"..QUALITY_TEXT[RaidLoggerStore.qualityToLog])
         end
     elseif  "P" == cmd then
         if RaidLoggerStore.activeRaid then
@@ -1133,8 +1143,7 @@ end
 --   ADDON FRAME 
 
 function RaidLoggerFrame:OnAddonLoaded()
-    SLASH_RaidLogger1 = "/rl"
-    SLASH_RaidLogger2 = "/rlog"
+    SLASH_RaidLogger1 = "/rlog"
     SlashCmdList["RaidLogger"] = RaidLogger_Commands
     out("Logs raid attendance into a file. Write |cFF00FF00/rlog help|r for a list of commands.")
 
@@ -1156,6 +1165,12 @@ function RaidLoggerFrame:OnAddonLoaded()
             EndRaidReminder()
         end 
     end
+
+    -- migrate store
+    if not RaidLoggerStore.qualityToLog then 
+        RaidLoggerStore.qualityToLog = QUALITY_RARE;
+    end 
+
     RaidLogger:ChooseLastRaid()
     RaidLogger_RaidWindow:Refresh()
     RaidLogger_RaidWindow_Buttons_LootTab:Clicked()

@@ -5,7 +5,6 @@
 
 const
    MAX_RAID_OPTIONS = 20,
-   USE_LAST_RAID = true,
    ZONE_SHORT_NAME = {
       "Onyxia's Lair": "Onyxia",
       "The Molten Core": "MC",
@@ -261,7 +260,7 @@ function findLuaFile() {
       console.error(`Couldn't find RaidLogger.lua output file! It should be under SavedVariables after finishing a raid with /rl end`);
       process.exit(1);
    }
-   console.log(`Using ${colorWarning}${luaFile}${nocolor}`);
+   console.log(`Using LUA ${colorWarning}${luaFile}${nocolor}`);
 
    return luaFile;
 }
@@ -322,7 +321,7 @@ function handleServerResponse(response, debugObj) {
    }
 }
 
-async function browseLua(exportPath, luaFile) {
+async function browseLua(exportPath, luaFile, useLastRaid) {
    try {
       if (!luaFile)
          luaFile = findLuaFile()
@@ -331,7 +330,7 @@ async function browseLua(exportPath, luaFile) {
       let raidOptions = raids.map(o => raidName(o));
       let answerIndex = 0; // raidOptions.indexOf('19-10-23 22:46 / The Molten Core');
 
-      if (!USE_LAST_RAID) {
+      if (!useLastRaid) {
          raidOptions.push('Cancel');
 
          console.log('');
@@ -419,7 +418,7 @@ async function browseLua(exportPath, luaFile) {
    }
 }
 
-async function uploadRaids(apiEndpoint, luaFile, backupPath, logs, gear, retainlog, choose, combatlogsPath, defaultRealm) {
+async function uploadRaids(apiEndpoint, luaFile, backupPath, logs, gear, retainlog, choose, combatlogsPath, defaultRealm, useLastRaid) {
    try {
       if (!luaFile)
          luaFile = findLuaFile()
@@ -432,20 +431,24 @@ async function uploadRaids(apiEndpoint, luaFile, backupPath, logs, gear, retainl
          let raidOptions = payload.raids.map(o => raidName(o));
          raidOptions.push('Cancel');
 
-         console.log('');
-         let answers = await inquirer.promptAsync([{
-            type: 'list',
-            name: 'action',
-            message: 'Choose a raid:',
-            choices: raidOptions
-         }]);
-         let answerIndex = raidOptions.indexOf(answers['action']);
-         console.log('');
+         if (useLastRaid) {
+            raids = [payload.raids[0]];
+         } else {
+            console.log('');
+            let answers = await inquirer.promptAsync([{
+               type: 'list',
+               name: 'action',
+               message: 'Choose a raid:',
+               choices: raidOptions
+            }]);
+            let answerIndex = raidOptions.indexOf(answers['action']);
+            console.log('');
 
-         if (answerIndex === raidOptions.length - 1)
-            process.exit(0);
+            if (answerIndex === raidOptions.length - 1)
+               process.exit(0);
 
-         raids = [payload.raids[answerIndex]];
+            raids = [payload.raids[answerIndex]];
+         }
       } else
          raids = payload.raids.sort((a, b) => a['date'].localeCompare(b['date']));
 
@@ -476,7 +479,7 @@ async function uploadRaids(apiEndpoint, luaFile, backupPath, logs, gear, retainl
       }
 
       if (gear && raids.length)
-         await uploadGear(apiEndpoint, backupPath, retainlog, payload.classes, raids[0], combatlogsPath);
+         await uploadGear(apiEndpoint, luaFile, backupPath, retainlog, payload.classes, raids[0], combatlogsPath);
    } catch (e) {
       console.error(`Failed uploading raid: ${e.stack}`);
    }
@@ -604,10 +607,11 @@ async function main() {
    program
       .command('browse')
       .description('Browse raids in LUA')
-      .option("-l, --lua <file>", "Full path to RaidLogger.lua saved vadiables", ".")
+      .option("--lua <file>", "Full path to RaidLogger.lua saved vadiables")
       .option("-e, --export <exportPath>", "Path to export data", ".")
+      .option("--last", "Use last raid instead of letting user choose")
       .action(async function (options) {
-         await browseLua(options['exportPath'], options['lua']);
+         await browseLua(options['exportPath'], options['lua'], options['last']);
          console.log('Done.');
       });
 
@@ -620,12 +624,13 @@ async function main() {
       .option('--logs <url>', 'Link to raid logs')
       .option('-c, --combatlogs <url>', 'Location of combat logs')
       .option('--realm <name>', 'Default realm to use for unrealmed player names', 'Firemaw')
-      .option("-l, --lua <file>", "Full path to RaidLogger.lua saved vadiables", ".")
+      .option("-l, --lua <file>", "Full path to RaidLogger.lua saved vadiables")
+      .option("--last", "Use last raid instead of letting user choose")
       .action(async function (what, apiurl, options) {
          if (what === "raid")
-            await uploadRaids(apiurl, options.lua, options.backup, options.logs, options.gear, options.retainlog, true, options.combatlogs, options.realm);
+            await uploadRaids(apiurl, options.lua, options.backup, options.logs, options.gear, options.retainlog, true, options.combatlogs, options.realm, options['last']);
          else if (what === "raids")
-            await uploadRaids(apiurl, options.lua, options.backup, options.logs, options.gear, options.retainlog, false, options.combatlogs, options.realm);
+            await uploadRaids(apiurl, options.lua, options.backup, options.logs, options.gear, options.retainlog, false, options.combatlogs, options.realm, options['last']);
          else if (what === "buffs")
             await uploadBuffs(apiurl);
          else if (what === "gear")
