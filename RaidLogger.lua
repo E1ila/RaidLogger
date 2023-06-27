@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 2.6
+local VERSION = 2.7
 local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
@@ -40,28 +40,37 @@ local CLASS_COLOR = {
 }
 
 local IGNORED_ITEMS = {
-    [1] = "Elementium Ore",
-    [2] = "Clay Scarab",
-    [3] = "Stone Scarab",
-    [4] = "Gold Scarab",
-    [5] = "Silver Scarab",
-    [6] = "Bronze Scarab",
-    [7] = "Crystal Scarab",
-    [8] = "Bone Scarab",
-    [9] = "Ivory Scarab",
-    [10] = "Idol of Strife",
-    [11] = "Idol of the Sun",
-    [12] = "Idol of War",
-    [13] = "Idol of Night",
-    [14] = "Idol of the Sage",
-    [15] = "Idol of Rebirth",
-    [16] = "Idol of Death",
-    [17] = "Idol of Life",
-    [18] = "Wartorn Leather Scrap",
-    [19] = "Wartorn Plate Scrap",
-    [20] = "Wartorn Chain Scrap",
-    [21] = "Wartorn Cloth Scrap",
+    [20863] = "Clay Scarab",
+    [20858] = "Stone Scarab",
+    [20859] = "Gold Scarab",
+    [20860] = "Silver Scarab",
+    [20861] = "Bronze Scarab",
+    [20862] = "Crystal Scarab",
+    [20864] = "Bone Scarab",
+    [20865] = "Ivory Scarab",
+    [22373] = "Wartorn Leather Scrap",
+    [22376] = "Wartorn Plate Scrap",
+    [22374] = "Wartorn Chain Scrap",
+    [22376] = "Wartorn Cloth Scrap",
+    [20881] = "Idol of Strife",
+    [20874] = "Idol of the Sun",
+    [20882] = "Idol of War",
+    [20875] = "Idol of Night",
+    [20877] = "Idol of the Sage",
+    [20878] = "Idol of Rebirth",
+    [20876] = "Idol of Death",
+    [20879] = "Idol of Life",
+    [20725] = "Nexus Crystal",
+    [16203] = "Greater Eternal Essence",
+    [16204] = "Illusion Dust",
+    [14344] = "Large Brilliant Shard"
 }
+
+local HIDDEN_ITEMS = {
+    [18562] = "Elementium Ore",
+}
+-- copy IGNORED_ITEMS into HIDDEN_ITEMS
+for k,v in pairs(IGNORED_ITEMS) do HIDDEN_ITEMS[k] = v end
 
 local COLOR_INSTANCE = "|cffff33ff"
 
@@ -304,6 +313,11 @@ local function ItemStringFromLink(itemLink)
     return string.sub(itemLink, startIndex, endIndex-3)
 end 
 
+local function ItemIdFromLink(itemLink) 
+    local parts = {_G.string.split(":", itemLink)}
+    return tonumber(parts[2])
+end 
+
 -- loot can be itemId
 local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
     -- local vStartIndex, vEndIndex, vLinkColor, vItemCode, vItemEnchantCode, vItemSubCode, vUnknownCode, vItemName = strfind(loot, "|c(%x+)|Hitem:(%d+):(%d+):(%d+):(%d+)|h%[([^%]]+)%]|h|r");
@@ -318,7 +332,13 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
 
     itemLink = normalizeLink(itemLink)
     local itemString = ItemStringFromLink(itemLink)
+    local itemId = ItemIdFromLink(itemLink)
     lootid = lootid or (#RaidLoggerStore.activeRaid.loot + 1)
+
+    if IGNORED_ITEMS[itemId] then 
+        debug("Ignoring loot (blacklist): " .. ColorName(who) .. " received " .. itemLink)
+        return
+    end 
 
     -- debug("Checking dup of - "..lootid..","..itemString)
     for i = #RaidLoggerStore.activeRaid.loot, 1, -1 do 
@@ -363,7 +383,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
             RaidLogger:PostLootEntry(entry, count.."/"..count, 3, nil)
         end 
     else 
-        debug("Ignoring loot: " .. ColorName(who) .. " received " .. itemLink)
+        debug("Ignoring loot (quality): " .. ColorName(who) .. " received " .. itemLink)
     end
 end
 
@@ -1679,8 +1699,9 @@ function RaidLogger_RaidWindow_LootTab:Refresh()
             local blueRecipe = entry.quality == QUALITY_RARE and (string.find(entry.item, "Recipe: ") == 1 or string.find(entry.item, "Formula: ") == 1 or string.find(entry.item, "Schematic: ") == 1)
             local epicItem = entry.quality >= (RaidLoggerStore.displayLootFilter or QUALITY_EPIC)
             local searchMatch = searchText == "" or string.find(string.lower(entry.item), searchText)
-            local ignoredItem = tableTextLookup(IGNORED_ITEMS, entry.item)
-            if (epicItem or blueRecipe) and searchMatch and not ignoredItem then 
+            -- local ignoredItem = tableTextLookup(IGNORED_ITEMS, entry.item)
+            local hiddenItem = HIDDEN_ITEMS[ItemIdFromLink(entry.link)]
+            if (epicItem or blueRecipe) and searchMatch and not hiddenItem then 
                 self:AddRow(players, entry, not editRaid.endTime, votingEnabled)
             end 
         end
