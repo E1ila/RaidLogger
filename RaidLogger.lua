@@ -11,8 +11,8 @@ local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
 local ADDON_PREFIX = "RaidLogger"
 
--- local HOURGLASS_SAND_NAME = "Linen Cloth"
-local HOURGLASS_SAND_NAME = "Hourglass Sand"
+-- local CORE_LEATHER_NAME = "Linen Cloth"
+local CORE_LEATHER_NAME = "Core Leather"
 local ACTIVE_RAID_TIMEOUT = 3600 * 12
 
 local TRACKED_INSTANCES = {
@@ -256,7 +256,7 @@ end
 local function InTrackedInstance()
     if not IsInInstance() then return nil end
     local name, _, _, _, _, _, _, mapID, _ = GetInstanceInfo()
-    if TRACKED_INSTANCES[mapID] then return name, mapID end
+    if TRACKED_INSTANCES[mapID] then return TRACKED_INSTANCES[mapID], mapID end
     return nil, nil
 end
 
@@ -354,7 +354,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
         end 
     end
 
-    if who and itemName == HOURGLASS_SAND_NAME then 
+    if who and itemName == CORE_LEATHER_NAME then 
         if not RaidLoggerStore.activeRaid.sands then RaidLoggerStore.activeRaid.sands = {} end 
         RaidLoggerStore.activeRaid.sands[who] = (RaidLoggerStore.activeRaid.sands[who] or 0) + 1
     end 
@@ -396,7 +396,7 @@ local LootSelfMsgStrings = {
 	_G.LOOT_ITEM_SELF,                  -- You receive loot: %s.
 }
 
-function RaidLogger:ParseLootMessage(msg, zone)
+function RaidLogger:ParseLootMessage(msg)
     -- debug("ParseLootMessage "..msg)
 	for _, st in ipairs(LootMsgStrings) do
 		local player, link, quantity = RaidLoggerDeformat(msg, st)
@@ -746,7 +746,7 @@ function RaidLogger:UpdateRaid(forceZone)
     -- save zone
     if not RaidLoggerStore.activeRaid.zone then
         local zone, zoneId = InTrackedInstance()
-        if zone then
+        if zoneId then
             RaidLoggerStore.activeRaid.zone = zone
             RaidLoggerStore.activeRaid.zoneId = zoneId
             RaidLogger_RaidWindow:Refresh()
@@ -1028,11 +1028,11 @@ function RaidLogger:OnAddonMessage(text, channel, sender, target)
         end 
 
     elseif parts[1] == SYNC_CHECK_REPLY then 
-        local zone = parts[3]
+        local zoneId = parts[3]
         local lootCount = tonumber(parts[2])
 
         -- start a raid
-        if not RaidLoggerStore.activeRaid or ""..RaidLoggerStore.activeRaid.zoneId ~= parts[3] or syncingNow then 
+        if not RaidLoggerStore.activeRaid or ""..RaidLoggerStore.activeRaid.zoneId ~= zoneId or syncingNow then 
             return 
         end
 
@@ -1270,7 +1270,7 @@ function RaidLoggerFrame:OnEvent(event, arg1, ...)
     elseif event == "CHAT_MSG_LOOT" then
         local zone = InTrackedInstance()
         if zone and RaidLoggerStore.activeRaid then
-            RaidLogger:ParseLootMessage(arg1, zone)
+            RaidLogger:ParseLootMessage(arg1)
         end
     elseif event == "RAID_ROSTER_UPDATE" or event == "GROUP_ROSTER_UPDATE" or event == "ENCOUNTER_END" then
         if RaidLoggerStore and RaidLoggerStore.activeRaid then
