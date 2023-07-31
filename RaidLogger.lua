@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 2.7
+local VERSION = 2.8
 local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
@@ -49,7 +49,7 @@ local IGNORED_ITEMS = {
     [20864] = "Bone Scarab",
     [20865] = "Ivory Scarab",
     [22373] = "Wartorn Leather Scrap",
-    [22376] = "Wartorn Plate Scrap",
+    [22375] = "Wartorn Plate Scrap",
     [22374] = "Wartorn Chain Scrap",
     [22376] = "Wartorn Cloth Scrap",
     [20881] = "Idol of Strife",
@@ -63,7 +63,8 @@ local IGNORED_ITEMS = {
     [20725] = "Nexus Crystal",
     [16203] = "Greater Eternal Essence",
     [16204] = "Illusion Dust",
-    [14344] = "Large Brilliant Shard"
+    [14344] = "Large Brilliant Shard",
+    [22682] = "Frozen Rune",
 }
 
 local HIDDEN_ITEMS = {
