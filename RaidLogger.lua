@@ -5,7 +5,7 @@
 -- Time: 18:36
 --
 
-local VERSION = 2.8
+local VERSION = 2.10
 local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
@@ -821,7 +821,7 @@ function RaidLogger:OnTradePlayerItemChanged(tradeSlotIndex)
         end
     end
     if not found then 
-        err("Item "..itemLink.." on slot "..tradeSlotIndex.." is not in our list of logged loot!")
+        debug("Item "..itemLink.." on slot "..tradeSlotIndex.." is not in our list of logged loot!")
         tradedItems[tradeSlotIndex] = nil
         return 
     end 
@@ -1521,10 +1521,10 @@ function RaidLogger_RaidWindow_LootTab:AddRow(players, entry, activeRaid)
         if entry.tradedTo then 
             RaidLogger_RaidWindow_LootTab:UpdateStatusImage(row, entry)
         else 
-            row.statusImage:SetNormalTexture(nil)
+            -- row.statusImage:SetNormalTexture(nil)
         end 
     else 
-        row.statusImage:SetNormalTexture(nil)
+        -- row.statusImage:SetNormalTexture(nil)
         row.statusFrame:SetScript("OnEnter", nil)
     end 
     

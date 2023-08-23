@@ -1,4 +1,4 @@
-## Interface: 11403
+## Interface: 11404
 ## Title: RaidLogger
 ## Author: Kof @Firemaw (kof_kof on twitch)
 ## Notes: Auto logs raid attendance and loot distribution

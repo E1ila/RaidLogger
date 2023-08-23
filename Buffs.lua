@@ -1,4 +1,19 @@
 local BUFFS = {
+    ["25661"] = {
+        name = "Chimaerok Chops (25 sta)",
+        desc = "Dirge's Kickin' Chimaerok Chops",
+        type = "Food"
+     },
+    ["18125"] = {
+        name = "Blessed Sunfruit (10 str)",
+        desc = "Blessed Sunfruit",
+        type = "Food"
+    },
+    ["18141"] = {
+        name = "Blessed Sunfruit (10 spi)",
+        desc = "Blessed Sunfruit Juice",
+        type = "Food"
+    },
     ["23768"] = {
         name = "Sayge's Dark Fortune of Damage",
         desc = "DMF Damage",
@@ -254,22 +269,22 @@ local BUFFS = {
         type = "Food",
     },
     ["18194"] = {
-        name = "Mana Regeneration (7 mp5)",
+        name = "Nightfin Soup (7 mp5)",
         desc = "Nightfin Soup",
         type = "Food",
     },
     ["22730"] = {
-        name = "Increased Intellect (9 int)",
+        name = "Tuber Surprise (9 int)",
         desc = "Runn Tum Tuber Surprise",
         type = "Food",
     },
     ["18192"] = {
-        name = "Increased Agility (9 agi)",
+        name = "Grilled Squid (9 agi)",
         desc = "Grilled Squid",
         type = "Food",
     },
     ["24799"] = {
-        name = "Well Fed (19 str)",
+        name = "Smoked Desert (19 str)",
         desc = "Smoked Desert Dumpling",
         type = "Food",
     },

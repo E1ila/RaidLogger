@@ -1,4 +1,25 @@
 module.exports = {
+   "25661": {
+      "name": "Chimaerok Chops (25 sta)",
+      "desc": "Dirge's Kickin' Chimaerok Chops",
+      "type": "Food",
+      "score": 15,
+      "imageUrl": "https://wow.zamimg.com/images/wow/icons/large/inv_boots_plate_03.jpg",
+   },
+   "18125": {
+      "name": "Blessed Sunfruit (10 str)",
+      "desc": "Blessed Sunfruit",
+      "type": "Food",
+      "score": 5,
+      "imageUrl": "https://wow.zamimg.com/images/wow/icons/large/inv_drink_16.jpg",
+   },
+   "18141": {
+      "name": "Blessed Sunfruit (10 spi)",
+      "desc": "Blessed Sunfruit Juice",
+      "type": "Food",
+      "score": 5,
+      "imageUrl": "https://wow.zamimg.com/images/wow/icons/large/inv_misc_food_41.jpg",
+   },
    "23768": {
       "name": "Sayge's Dark Fortune of Damage",
       "desc": "DMF Damage",
@@ -509,7 +530,7 @@ module.exports = {
       "name": "Winterfall Firewater",
       "desc": "Winterfall Firewater",
       "type": "Consumable",
-      "score": 5,
+      "score": 10,
       "imageUrl": "https://wow.zamimg.com/images/wow/icons/large/inv_potion_92.jpg",
    },
 }
