@@ -418,7 +418,7 @@ async function browseLua(exportPath, luaFile, useLastRaid) {
    }
 }
 
-async function uploadRaids(apiEndpoint, luaFile, backupPath, logs, gear, retainlog, choose, combatlogsPath, defaultRealm, useLastRaid) {
+async function uploadRaids(apiEndpoint, luaFile, backupPath, logs, vod, gear, retainlog, choose, combatlogsPath, defaultRealm, useLastRaid) {
    try {
       if (!luaFile)
          luaFile = findLuaFile()
@@ -465,6 +465,7 @@ async function uploadRaids(apiEndpoint, luaFile, backupPath, logs, gear, retainl
                method: 'POST',
                data: {
                   logs,
+				  vod,
                   raid,
                   classes: first ? payload.classes : null,
                   roster: first ? payload.roster : null,
@@ -622,15 +623,16 @@ async function main() {
       .option('--gear', 'Parse and upload gear from WoWCombatLog.txt, will also backup/delete it')
       .option('--retainlog', 'Do not delete combat log')
       .option('--logs <url>', 'Link to raid logs')
+      .option('--vod <url>', 'Link to raid video')
       .option('-c, --combatlogs <url>', 'Location of combat logs')
       .option('--realm <name>', 'Default realm to use for unrealmed player names', 'Firemaw')
       .option("-l, --lua <file>", "Full path to RaidLogger.lua saved vadiables")
       .option("--last", "Use last raid instead of letting user choose")
       .action(async function (what, apiurl, options) {
          if (what === "raid")
-            await uploadRaids(apiurl, options.lua, options.backup, options.logs, options.gear, options.retainlog, true, options.combatlogs, options.realm, options['last']);
+            await uploadRaids(apiurl, options.lua, options.backup, options.logs, options.vod, options.gear, options.retainlog, true, options.combatlogs, options.realm, options['last']);
          else if (what === "raids")
-            await uploadRaids(apiurl, options.lua, options.backup, options.logs, options.gear, options.retainlog, false, options.combatlogs, options.realm, options['last']);
+            await uploadRaids(apiurl, options.lua, options.backup, options.logs, options.vod, options.gear, options.retainlog, false, options.combatlogs, options.realm, options['last']);
          else if (what === "buffs")
             await uploadBuffs(apiurl);
          else if (what === "gear")
