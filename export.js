@@ -4,7 +4,7 @@
 // Written by Kof
 
 const
-   MAX_RAID_OPTIONS = 20,
+   MAX_RAID_OPTIONS = 40,
    ZONE_SHORT_NAME = {
       "Onyxia's Lair": "Onyxia",
       "The Molten Core": "MC",
@@ -418,7 +418,7 @@ async function browseLua(exportPath, luaFile, useLastRaid) {
    }
 }
 
-async function uploadRaids(apiEndpoint, luaFile, backupPath, logs, vod, gear, retainlog, choose, combatlogsPath, defaultRealm, useLastRaid) {
+async function uploadRaids(apiEndpoint, luaFile, backupPath, logs, vod, gear, retainlog, choose, combatlogsPath, defaultRealm, useLastRaid, zoneFilter) {
    try {
       if (!luaFile)
          luaFile = findLuaFile()
@@ -428,26 +428,28 @@ async function uploadRaids(apiEndpoint, luaFile, backupPath, logs, vod, gear, re
       let raids;
 
       if (choose) {
-         let raidOptions = payload.raids.map(o => raidName(o));
-         raidOptions.push('Cancel');
+         let raidOptions = payload.raids.map((o, index) => ({name: raidName(o), index, zone: o.zone}));
+         raidOptions = raidOptions.filter(o => !zoneFilter || ZONE_SHORT_NAME[o.zone] === zoneFilter);
+         raidOptions.push({name: 'Cancel'});
 
          if (useLastRaid) {
             raids = [payload.raids[0]];
          } else {
             console.log('');
+            const choices = raidOptions.map(o => o.name);
             let answers = await inquirer.promptAsync([{
                type: 'list',
                name: 'action',
                message: 'Choose a raid:',
-               choices: raidOptions
+               choices,
             }]);
-            let answerIndex = raidOptions.indexOf(answers['action']);
+            let answerIndex = choices.indexOf(answers['action']);
             console.log('');
 
             if (answerIndex === raidOptions.length - 1)
                process.exit(0);
 
-            raids = [payload.raids[answerIndex]];
+            raids = [payload.raids[raidOptions[answerIndex].index]];
          }
       } else
          raids = payload.raids.sort((a, b) => a['date'].localeCompare(b['date']));
@@ -624,15 +626,16 @@ async function main() {
       .option('--retainlog', 'Do not delete combat log')
       .option('--logs <url>', 'Link to raid logs')
       .option('--vod <url>', 'Link to raid video')
+      .option("-z, --zone <name>", "Filter only specific zone: Naxx/BWL/MC/AQ40/AQ20/ZG")
       .option('-c, --combatlogs <url>', 'Location of combat logs')
       .option('--realm <name>', 'Default realm to use for unrealmed player names', 'Firemaw')
       .option("-l, --lua <file>", "Full path to RaidLogger.lua saved vadiables")
       .option("--last", "Use last raid instead of letting user choose")
       .action(async function (what, apiurl, options) {
          if (what === "raid")
-            await uploadRaids(apiurl, options.lua, options.backup, options.logs, options.vod, options.gear, options.retainlog, true, options.combatlogs, options.realm, options['last']);
+            await uploadRaids(apiurl, options.lua, options.backup, options.logs, options.vod, options.gear, options.retainlog, true, options.combatlogs, options.realm, options['last'], options['zone']);
          else if (what === "raids")
-            await uploadRaids(apiurl, options.lua, options.backup, options.logs, options.vod, options.gear, options.retainlog, false, options.combatlogs, options.realm, options['last']);
+            await uploadRaids(apiurl, options.lua, options.backup, options.logs, options.vod, options.gear, options.retainlog, false, options.combatlogs, options.realm, options['last'], options['zone']);
          else if (what === "buffs")
             await uploadBuffs(apiurl);
          else if (what === "gear")

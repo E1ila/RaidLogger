@@ -9,7 +9,7 @@
             "request": "launch",
             "name": "Launch Program",
             "program": "${workspaceFolder}/export.js",
-            "args": ["upload", "raid", "http://thelegendguild.com/client/QOoF8Jj7MW2Ye2F8uTZlLFCHpqHL0jysQINiL3Y8", "-c", "/Applications/wow/_classic_era_/Logs/WoWCombatLog-061923_215013-Naxx.txt", "--retainlog", "--gear", "--logs", "https://vanilla.warcraftlogs.com/reports/9J6KWTwzamXjC2A7/"]
+            "args": ["upload", "raid", "http://thelegendguild.com/client/QOoF8Jj7MW2Ye2F8uTZlLFCHpqHL0jysQINiL3Y8", "-c", "/Applications/wow/_classic_era_/Logs/WoWCombatLog-021824_205200.txt", "--retainlog", "--gear", "--logs", "https://vanilla.warcraftlogs.com/reports/WHvJNQwkPy8CrjTK", "--last", "--backup", "/Users/tal/wow-logs"]
             // "args": ["browse"]
         }
     ]
