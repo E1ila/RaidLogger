@@ -4,8 +4,6 @@
 // Written by Kof
 
 const
-   JsonAsty = require("json-asty"),
-   luaparser = require('luaparse'),
    MAX_RAID_OPTIONS = 40,
    ZONE_SHORT_NAME = {
       "Onyxia's Lair": "Onyxia",
@@ -121,73 +119,6 @@ function searchRecursive(dir, filename, scanBackwards) {
    return null;
 }
 
-function parseLua(lua) {
-   let json = lua.replaceAll('\r\n["', '\t"');
-   json = json.replaceAll('"] = ', '": ');
-   json = json.replaceAll('\t[', '\t"');
-   json = json.replaceAll('] = ', '": ');
-   json = json.replaceAll(' = ', ": ");
-   json = json.replaceAll('\t', "");
-   json = json.replaceAll('\n', "");
-   json = json.replaceAll('\r', "");
-   json = json.replaceAll(',}', "}");
-
-   let firstVar = true;
-   const lines = json.split('\n');
-   for (let i = 0; i < lines.length; i++) {
-      if (lines[i].indexOf(' = {') !== -1) {
-         lines[i] = `${firstVar ? '"' : ', "'}${lines[i].replace(' = {', '": {')}`
-         firstVar = false;
-      }
-      if (lines[i].indexOf(' = nil') !== -1) {
-         lines[i] = `${firstVar ? '"' : ', "'}${lines[i].replace(' = nil', '": null')}`
-         firstVar = false;
-      }
-   }
-   json = lines.join('');
-
-   // convert arrays
-   let arrayIndex = 0;
-   let pos = json.indexOf('{{')
-   while (pos !== -1) {
-      let pos2 = json.indexOf('}}', pos+2);
-      if (pos2 !== -1) {
-         const p1 = json.substr(0, pos);
-         const inner = json.substr(pos+2, pos2 - pos - 2);
-         const p2 = json.substr(pos2 + 2);
-         json = p1 + `[{` + inner + `}]` + p2;
-      }
-      pos = json.indexOf('{{');
-   }
-   // lines[i] = lines[i].indexOf(', -- [') === -1 ? lines[i] : `"${i + 1}": ` + lines[i].split(', -- [')[0] + ',';
-
-   json = json.replaceAll(',}', '}');
-   json = '{' + json + '}';
-
-   // json = json.replaceAll('{{', "[{");
-   // json = json.replaceAll('}}', "}]");
-
-   return JSON.parse(json);
-}
-
-function parseLuaSimple(lua) {
-   let json = lua;
-   json = json.replaceAll('\r\n["', '\r\n"');
-   json = json.replaceAll('"] = ', '": ');
-   json = json.replaceAll('\r\n[', '\t"');
-   json = json.replaceAll('\r\nnil, --', '\tnull, --');
-   json = json.replaceAll('\t', "");
-   json = json.replaceAll('\r', "");
-
-   const lines = json.split('\n');
-   for (let i = 0; i < lines.length; i++)
-      lines[i] = lines[i].length < 5 || lines[i].indexOf('": ') >= 0 ? lines[i] : `"${i+1}": ` + lines[i];
-   json = lines.join('\n');
-
-   json = json.replaceAll(',\n}', '\n}');
-   return JSON.parse(json);
-}
-
 let arrayIndex = 0;
 
 function parseLua2(lua) {
@@ -196,9 +127,22 @@ function parseLua2(lua) {
    json = json.replace(/\r\n[{]\r\n/g, (s, args) => {
       return `\r\n"ARR-${(''+arrayIndex++).padStart(6, '0')}": {\r\n`;
    });
+   const guildRosterTag = '"guildRoster": {';
+   let pos = json.indexOf(guildRosterTag);
+   if (pos !== -1) {
+      let pos2 = json.lastIndexOf('},');
+      let mid = json.substring(pos + guildRosterTag.length, pos2);
+      // convert LUA arrays to JSON arrays
+      mid = mid.replace(/{/g, '[').replace(/}/g, ']');
+      json =
+         json.substring(0, pos + guildRosterTag.length) +
+         mid +
+         json.substring(pos2);
+   }
    // remove /r/n
    json = json.replace(/\r\n/g, '');
    json = json.replace(/,}/g, '}');
+   json = json.replace(/,]/g, ']');
    return JSON.parse(json);
 }
 
