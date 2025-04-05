@@ -10,10 +10,13 @@ local MIN_RAID_PLAYERS = 10
 local ADDON_NAME = "RaidLogger"
 local FONT_NAME = "Fonts\\FRIZQT__.TTF"
 local ADDON_PREFIX = "RaidLogger"
+local WFCOMM_PREFIX_CREDIT = "WF_CREDIT"
 
 -- local CORE_LEATHER_NAME = "Linen Cloth"
 local CORE_LEATHER_NAME = "Core Leather"
 local ACTIVE_RAID_TIMEOUT = 3600 * 12
+
+local SPELL_TABLE = { [564] = 'WF3', [563] = 'WF2', [1783] = 'WF1' }
 
 local TRACKED_INSTANCES = {
     [409] = "The Molten Core",
@@ -157,9 +160,9 @@ local function out(text)
 	print(" |cff0088ff<|cff00bbffRaidLogger|cff0088ff>|r "..text)
 end 
 
-local function debug(text)
+local function debug(text, ...)
     if RaidLoggerStore.debug then 
-        print(" |cff0088ff<|cff00bbffRaidLogger|cff0088ff>|r |cff009999DEBUG |cff999999"..text)
+        print(" |cff0088ff{|cff00bbffRaidLogger|cff0088ff}|r |cff009999DEBUG|cff999999", text, ...)
     end 
 end 
 
@@ -857,7 +860,21 @@ end
 -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 --   SYNC
 
-function RaidLogger:OnAddonMessage(text, channel, sender, target)
+function RaidLogger:OnAddonMessage(prefix, text, channel, sender, target)
+    --debug("|cff99ff00"..prefix.."|r "..text)
+    if RaidLoggerStore.sync and prefix == ADDON_PREFIX..RaidLoggerStore.sync then
+        RaidLogger:OnSyncMessage(text, channel, sender, target)
+    elseif prefix == WFCOMM_PREFIX_CREDIT then
+        RaidLogger:OnWfMessage(text, channel, sender, target)
+    end
+end
+
+function RaidLogger:OnWfMessage(text, channel, sender, target)
+    local combatUptime, myShaman = strsplit(":", text)
+    debug('|c99ff9900'..channel..'|r', '|cff99ff00'..sender..'|r', combatUptime, myShaman)
+end
+
+function RaidLogger:OnSyncMessage(text, channel, sender, target)
     -- sender = removeRealmName(sender)
     if sender == getSelfPlayerName() then return end 
     local parts = splitCsv(text)
@@ -1286,11 +1303,9 @@ function RaidLoggerFrame:OnEvent(event, arg1, ...)
                 RaidLogger:UpdateRaid()
             end
         end
-    elseif event == "CHAT_MSG_ADDON" and RaidLoggerStore.sync then
-        if arg1 == ADDON_PREFIX..RaidLoggerStore.sync then 
-            RaidLogger:OnAddonMessage(...)
-        end 
-    elseif event == "UI_INFO_MESSAGE" then 
+    elseif event == "CHAT_MSG_ADDON" then
+        RaidLogger:OnAddonMessage(arg1, ...)
+    elseif event == "UI_INFO_MESSAGE" then
         RaidLogger:OnUiInfoMessage(arg1, ...)
     elseif event == "TRADE_SHOW" and RaidLoggerStore.activeRaid then
         RaidLogger:OnTradeShow()

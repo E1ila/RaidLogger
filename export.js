@@ -248,7 +248,7 @@ function findLogFile(required) {
    if (!logFile) {
       if (!required) return;
       console.error(`Couldn't find Logs/WoWCombatLog.txt file! It should be under Logs after logging out.`);
-      process.exit(1);
+      return null;
    }
    console.log(`Found log file ${colorWarning}${logFile}${nocolor}`);
 
