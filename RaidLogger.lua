@@ -618,6 +618,7 @@ function RaidLogger:StartRaid()
         zone = nil,
         loot = {},
         buffs = {},
+        wf = {},
     }
     if not RaidLoggerStore.players then
         RaidLoggerStore.players = {}
@@ -869,9 +870,25 @@ function RaidLogger:OnAddonMessage(prefix, text, channel, sender, target)
     end
 end
 
+local function wfMessage(combatTime, combatUptime, shaman, reporter, channel)
+    --debug('|c99ff9900'..channel..'|r', '|cff99ff00'..sender..'|r', combatTime, combatUptime, shaman)
+    debug('|c99ff9900'..channel..'|r', '|cff99ff00'..reporter..'|r', combatTime, combatUptime, shaman)
+    if RaidLoggerStore.activeRaid then
+        if not RaidLoggerStore.activeRaid.wf[shaman] then
+            RaidLoggerStore.activeRaid.wf[shaman] = {
+                tt = tonumber(combatTime),
+                up = tonumber(combatUptime),
+            }
+        else
+            RaidLoggerStore.activeRaid.wf[shaman].tt = RaidLoggerStore.activeRaid.wf[shaman].tt + tonumber(combatTime)
+            RaidLoggerStore.activeRaid.wf[shaman].up = RaidLoggerStore.activeRaid.wf[shaman].up + tonumber(combatUptime)
+        end
+    end
+end
+
 function RaidLogger:OnWfMessage(text, channel, sender, target)
-    local combatUptime, myShaman = strsplit(":", text)
-    debug('|c99ff9900'..channel..'|r', '|cff99ff00'..sender..'|r', combatUptime, myShaman)
+    local combatTime, combatUptime, shaman = strsplit(":", text)
+    wfMessage(combatTime, combatUptime, shaman, sender, channel)
 end
 
 function RaidLogger:OnSyncMessage(text, channel, sender, target)
@@ -1227,7 +1244,7 @@ function RaidLoggerFrame:OnAddonLoaded()
         else 
             printerr("Failed registering to message prefix!")
         end 
-    end 
+    end
 end
 
 function RaidLoggerFrame:OnUpdate()
@@ -1948,4 +1965,3 @@ function RaidLogger_DiscardRaidButton:Clicked()
         RaidLogger:DiscardRaid() 
     end, nil, "Discard", "Cancel") 
 end 
-
