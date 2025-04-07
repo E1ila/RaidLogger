@@ -156,8 +156,8 @@ local function questionOp(cond, trueValue, falseValue)
     return falseValue
 end 
 
-local function out(text)
-	print(" |cff0088ff<|cff00bbffRaidLogger|cff0088ff>|r "..text)
+local function out(text, ...)
+	print(" |cff0088ff{|cff00bbffRaidLogger|cff0088ff}|r "..text, ...)
 end 
 
 local function debug(text, ...)
@@ -340,7 +340,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
     lootid = lootid or (#RaidLoggerStore.activeRaid.loot + 1)
 
     if IGNORED_ITEMS[itemId] then 
-        debug("Ignoring loot (blacklist): " .. ColorName(who) .. " received " .. itemLink)
+        --debug("Ignoring loot (blacklist): " .. ColorName(who) .. " received " .. itemLink)
         return
     end 
 
@@ -387,7 +387,7 @@ local function LogLoot(who, loot, quantity, ts, tradedTo, votes, status, lootid)
             RaidLogger:PostLootEntry(entry, count.."/"..count, 3, nil)
         end 
     else 
-        debug("Ignoring loot (quality): " .. ColorName(who) .. " received " .. itemLink)
+        --debug("Ignoring loot (quality): " .. ColorName(who) .. " received " .. itemLink)
     end
 end
 
@@ -870,25 +870,25 @@ function RaidLogger:OnAddonMessage(prefix, text, channel, sender, target)
     end
 end
 
-local function wfMessage(combatTime, combatUptime, shaman, reporter, channel)
+local function wfMessage(combatTime, wfTime, shaman, reporter, channel)
     --debug('|c99ff9900'..channel..'|r', '|cff99ff00'..sender..'|r', combatTime, combatUptime, shaman)
-    debug('|c99ff9900'..channel..'|r', '|cff99ff00'..reporter..'|r', combatTime, combatUptime, shaman)
+    debug('|c99ff9900'..channel..'|r', '|cff99ff00'..reporter..'|r', ''..combatTime, ''..wfTime, ''..shaman)
     if RaidLoggerStore.activeRaid then
         if not RaidLoggerStore.activeRaid.wf[shaman] then
             RaidLoggerStore.activeRaid.wf[shaman] = {
                 tt = tonumber(combatTime),
-                up = tonumber(combatUptime),
+                up = tonumber(wfTime),
             }
         else
             RaidLoggerStore.activeRaid.wf[shaman].tt = RaidLoggerStore.activeRaid.wf[shaman].tt + tonumber(combatTime)
-            RaidLoggerStore.activeRaid.wf[shaman].up = RaidLoggerStore.activeRaid.wf[shaman].up + tonumber(combatUptime)
+            RaidLoggerStore.activeRaid.wf[shaman].up = RaidLoggerStore.activeRaid.wf[shaman].up + tonumber(wfTime)
         end
     end
 end
 
 function RaidLogger:OnWfMessage(text, channel, sender, target)
-    local combatTime, combatUptime, shaman = strsplit(":", text)
-    wfMessage(combatTime, combatUptime, shaman, sender, channel)
+    local combatTime, wfTime, shaman = strsplit(":", text)
+    wfMessage(combatTime, wfTime, shaman, sender, channel)
 end
 
 function RaidLogger:OnSyncMessage(text, channel, sender, target)
