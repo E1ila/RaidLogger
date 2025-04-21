@@ -904,27 +904,60 @@ function RaidLogger:CalcAverageUptimePerShaman(stats)
     for shaman, reporters in pairs(stats) do
         local shamanStats = {}
         shamanUptime[shaman] = shamanStats
-        if #reporters then
-            for reporter, totems in pairs(reporters) do
-                for totem, data in pairs(totems) do
-                    if not shamanStats[totem] then
-                        shamanStats[totem] = {
-                            t = 0,
-                            u = 0,
-                        }
-                    else
-                        shamanStats[totem].t = shamanStats[totem].t + data.t
-                        shamanStats[totem].u = shamanStats[totem].u + data.u
-                    end
+        local count = 0
+        local maxCombatTime = 0
+        for reporter, totems in pairs(reporters) do
+            count = count + 1
+            for totem, data in pairs(totems) do
+                if not shamanStats[totem] then
+                    shamanStats[totem] = {
+                        t = 0,
+                        u = 0,
+                    }
+                else
+                    shamanStats[totem].t = shamanStats[totem].t + data.t
+                    shamanStats[totem].u = shamanStats[totem].u + data.u
+                end
+                if shamanStats[totem].t > maxCombatTime then
+                    maxCombatTime = shamanStats[totem].t
                 end
             end
+        end
+        if count > 0 then
             for totem, data in pairs(shamanStats) do
-                data.t = data.t / #reporters
-                data.u = data.u / #reporters
+                data.t = maxCombatTime / count
+                data.u = data.u / count
             end
         end
     end
     return shamanUptime
+end
+
+local function UptimeText(uptimePercent, totem)
+    local color = '|cff5599ff'
+    if uptimePercent > 90 or totem and uptimePercent > 8 then
+        color = '|cff00ff00'
+    elseif uptimePercent > 80 or totem and uptimePercent > 4 then
+        color = '|cffb9f542'
+    elseif uptimePercent > 60 or totem and uptimePercent > 2 then
+        color = '|cfff5ef42'
+    elseif uptimePercent > 40 or totem and uptimePercent > 0 then
+        color = '|cffff2222'
+    end
+    return color..tostring(uptimePercent)..'%|r'
+end
+
+local function UptimeTextSeconds(uptimeSec, combatTime, totem)
+    local uptimePercent = 0
+    if combatTime and combatTime > 0 then
+        local p = uptimeSec / combatTime * 100
+        if p > 10 then
+            uptimePercent = math.floor(uptimeSec / combatTime * 100)
+        else
+            uptimePercent = math.floor(uptimeSec / combatTime * 1000) / 10
+        end
+    end
+    return UptimeText(uptimePercent, totem)
 end
 
 function RaidLogger:PrintTotemUptimeForLastRaid()
@@ -937,14 +970,24 @@ function RaidLogger:PrintTotemUptimeForLastRaid()
         return
     end
     local shamanUptime = RaidLogger:CalcAverageUptimePerShaman(raid.totemStats)
-    for shaman, totems in pairs(shamanUptime) do
-        out("  " .. shaman .. ":")
-        for totem, data in pairs(totems) do
-            if WFCMeleeFrame and WFCMeleeFrame.UptimeTextSeconds then
-                out("    " .. string.upper(totem) .. " " .. WFCMeleeFrame:UptimeTextSeconds(data.u, data.t))
-            else
-                out("    " .. totem .. " " .. tostring(math.floor(data.t / data.u * 100)) .. '%')
+    local printOrder = { "wf", "str", "agi", "fr", "frr", "gnd" }
+    for _, totem in pairs(printOrder) do
+        out("  " .. string.upper(totem) .. ":")
+        local stats = {}
+        for shaman, shamanTotems in pairs(shamanUptime) do
+            if shamanTotems[totem] and shamanTotems[totem].t > 0 then
+                table.insert(stats, {
+                    amount = math.floor(shamanTotems[totem].u / shamanTotems[totem].t * 10000),
+                    shaman = shaman,
+                })
             end
+        end
+        table.sort(stats, function(a, b)
+            return a.amount > b.amount
+        end)
+        for _, obj in pairs(stats) do
+            local data = shamanUptime[obj.shaman][totem]
+            out("       " .. UptimeTextSeconds(data.u, data.t, totem) .. "  " .. obj.shaman)
         end
     end
 end
