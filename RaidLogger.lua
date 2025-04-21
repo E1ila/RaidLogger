@@ -870,9 +870,8 @@ function RaidLogger:OnAddonMessage(prefix, text, channel, sender, target)
     end
 end
 
-local function wfMessage(combatTime, wfTime, shaman, reporter, channel)
-    --debug('|c99ff9900'..channel..'|r', '|cff99ff00'..sender..'|r', combatTime, combatUptime, shaman)
-    debug('|c99ff9900'..channel..'|r', '|cff99ff00'..reporter..'|r', ''..combatTime, ''..wfTime, ''..shaman)
+local function wfMessage(combatTime, wfTime, shaman, strTime, agiTime, frTime, frrTime, gndTime, reporter, channel)
+    debug('|c99ff9900'..channel..'|r', '|cff99ff00'..reporter..'|r', ''..combatTime, ''..wfTime, ''..shaman, strTime or '-', agiTime or '-', frTime or '-', frrTime or '-', gndTime or '-')
     if RaidLoggerStore.activeRaid then
         if not RaidLoggerStore.activeRaid.wf[shaman] then
             RaidLoggerStore.activeRaid.wf[shaman] = {
@@ -887,8 +886,8 @@ local function wfMessage(combatTime, wfTime, shaman, reporter, channel)
 end
 
 function RaidLogger:OnWfMessage(text, channel, sender, target)
-    local combatTime, wfTime, shaman = strsplit(":", text)
-    wfMessage(combatTime, wfTime, shaman, sender, channel)
+    local combatTime, wfTime, shaman, strTime, agiTime, frTime, frrTime, gndTime = strsplit(":", text)
+    wfMessage(combatTime, wfTime, shaman, strTime, agiTime, frTime, frrTime, gndTime, sender, channel)
 end
 
 function RaidLogger:OnSyncMessage(text, channel, sender, target)

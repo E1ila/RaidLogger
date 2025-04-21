@@ -6,6 +6,8 @@ rm ~/tmp/RaidLogger/pack
 rm -rf ~/tmp/RaidLogger/.git
 rm -rf ~/tmp/RaidLogger/node_modules
 rm -rf ~/tmp/RaidLogger/imgs
+rm -rf ~/tmp/RaidLogger/.vscode
+rm -rf ~/tmp/RaidLogger/.idea
 cd ~/tmp
 zip -9r RaidLogger_$1.zip RaidLogger -x \*.DS_Store -x \_MACOSX
 rm -rf ~/tmp/RaidLogger
