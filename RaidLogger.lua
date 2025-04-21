@@ -417,7 +417,7 @@ function RaidLogger:ParseLootMessage(msg)
 	end
 end
 
-function RaidLogger_Commands(msg)
+local function RaidLogger_Commands(msg)
     -- local _, _, cmd, arg1 = string.find(msg, "([%w]+)%s*(.*)$");
     local cmd, arg1 = _G.string.split(" ", msg)
     cmd = string.upper(cmd) 
@@ -501,6 +501,8 @@ function RaidLogger_Commands(msg)
     elseif  "CHECK" == cmd then
         lootMismatchs = 0
         RaidLogger:Post(0, nil, SYNC_CHECK, VERSION) 
+    elseif  "TOTEMS" == cmd then
+        RaidLogger:PrintTotemUptimeForLastRaid()
     elseif  "RESYNC" == cmd then
         if arg1 and string.len(arg1) > 0 then
             RaidLoggerStore.activeRaid.loot = {}
@@ -859,6 +861,96 @@ end
 
 
 -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--   Totems tracking
+
+local function IncreaseUptime(stats, reporter, shaman, totem, combatTime, uptime)
+    if not uptime or uptime == "0" then return end
+    if not stats[shaman] then
+        stats[shaman] = {}
+    end
+    if not stats[shaman][reporter] then
+        stats[shaman][reporter] = {}
+    end
+    if not stats[shaman][reporter][totem] then
+        stats[shaman][reporter][totem] = {
+            t = tonumber(combatTime),
+            u = tonumber(uptime),
+        }
+    else
+        stats[shaman][reporter][totem].t = stats[shaman][reporter][totem].t + tonumber(combatTime)
+        stats[shaman][reporter][totem].u = stats[shaman][reporter][totem].u + tonumber(uptime)
+    end
+end
+
+local function HandleTotemCreditMessage(combatTime, wfTime, shaman, strTime, agiTime, frTime, frrTime, gndTime, reporter, channel)
+    debug('|c99ff9900'..channel..'|r', '|cff99ff00'..reporter..'|r', ''..combatTime, ''..wfTime, ''..shaman, strTime or '-', agiTime or '-', frTime or '-', frrTime or '-', gndTime or '-')
+    if RaidLoggerStore.activeRaid and combatTime and combatTime ~= "0" then
+        local totemStats = RaidLoggerStore.activeRaid.totemStats
+        if not totemStats then
+            RaidLoggerStore.activeRaid.totemStats = {}
+            totemStats = RaidLoggerStore.activeRaid.totemStats
+        end
+        IncreaseUptime(totemStats, reporter, shaman, "wf", combatTime, wfTime)
+        IncreaseUptime(totemStats, reporter, shaman, "str", combatTime, strTime)
+        IncreaseUptime(totemStats, reporter, shaman, "agi", combatTime, agiTime)
+        IncreaseUptime(totemStats, reporter, shaman, "fr", combatTime, frTime)
+        IncreaseUptime(totemStats, reporter, shaman, "frr", combatTime, frrTime)
+        IncreaseUptime(totemStats, reporter, shaman, "gnd", combatTime, gndTime)
+    end
+end
+
+function RaidLogger:CalcAverageUptimePerShaman(stats)
+    local shamanUptime = {}
+    for shaman, reporters in pairs(stats) do
+        local shamanStats = {}
+        shamanUptime[shaman] = shamanStats
+        if #reporters then
+            for reporter, totems in pairs(reporters) do
+                for totem, data in pairs(totems) do
+                    if not shamanStats[totem] then
+                        shamanStats[totem] = {
+                            t = 0,
+                            u = 0,
+                        }
+                    else
+                        shamanStats[totem].t = shamanStats[totem].t + data.t
+                        shamanStats[totem].u = shamanStats[totem].u + data.u
+                    end
+                end
+            end
+            for totem, data in pairs(shamanStats) do
+                data.t = data.t / #reporters
+                data.u = data.u / #reporters
+            end
+        end
+    end
+    return shamanUptime
+end
+
+function RaidLogger:PrintTotemUptimeForLastRaid()
+    local raid = RaidLoggerStore.activeRaid
+    if not raid then
+        raid = RaidLoggerStore.raids[#RaidLoggerStore.raids]
+    end
+    if not raid.totemStats then
+        out("No totem stats available.")
+        return
+    end
+    local shamanUptime = RaidLogger:CalcAverageUptimePerShaman(raid.totemStats)
+    for shaman, totems in pairs(shamanUptime) do
+        out("  " .. shaman .. ":")
+        for totem, data in pairs(totems) do
+            if WFCMeleeFrame and WFCMeleeFrame.UptimeTextSeconds then
+                out("    " .. string.upper(totem) .. " " .. WFCMeleeFrame:UptimeTextSeconds(data.u, data.t))
+            else
+                out("    " .. totem .. " " .. tostring(math.floor(data.t / data.u * 100)) .. '%')
+            end
+        end
+    end
+end
+
+
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 --   SYNC
 
 function RaidLogger:OnAddonMessage(prefix, text, channel, sender, target)
@@ -870,24 +962,9 @@ function RaidLogger:OnAddonMessage(prefix, text, channel, sender, target)
     end
 end
 
-local function wfMessage(combatTime, wfTime, shaman, strTime, agiTime, frTime, frrTime, gndTime, reporter, channel)
-    debug('|c99ff9900'..channel..'|r', '|cff99ff00'..reporter..'|r', ''..combatTime, ''..wfTime, ''..shaman, strTime or '-', agiTime or '-', frTime or '-', frrTime or '-', gndTime or '-')
-    if RaidLoggerStore.activeRaid then
-        if not RaidLoggerStore.activeRaid.wf[shaman] then
-            RaidLoggerStore.activeRaid.wf[shaman] = {
-                tt = tonumber(combatTime),
-                up = tonumber(wfTime),
-            }
-        else
-            RaidLoggerStore.activeRaid.wf[shaman].tt = RaidLoggerStore.activeRaid.wf[shaman].tt + tonumber(combatTime)
-            RaidLoggerStore.activeRaid.wf[shaman].up = RaidLoggerStore.activeRaid.wf[shaman].up + tonumber(wfTime)
-        end
-    end
-end
-
 function RaidLogger:OnWfMessage(text, channel, sender, target)
     local combatTime, wfTime, shaman, strTime, agiTime, frTime, frrTime, gndTime = strsplit(":", text)
-    wfMessage(combatTime, wfTime, shaman, strTime, agiTime, frTime, frrTime, gndTime, sender, channel)
+    HandleTotemCreditMessage(combatTime, wfTime, shaman, strTime, agiTime, frTime, frrTime, gndTime, sender, channel)
 end
 
 function RaidLogger:OnSyncMessage(text, channel, sender, target)
