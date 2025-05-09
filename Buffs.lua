@@ -236,6 +236,10 @@ local BUFFS = {
         name = "Distilled Wisdom",
         type = "Flask",
     },
+    ["17629"] = {
+        name = "Chromatic Resistance",
+        type = "Flask",
+    },
     ["24870"] = {
         name = "Well Fed (?? sta, ?? spi)",
         type = "Food",

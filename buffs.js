@@ -367,6 +367,13 @@ module.exports = {
       "onetime": true,
       "imageUrl": "https://wow.zamimg.com/images/wow/icons/large/inv_potion_97.jpg",
    },
+   "17629": {
+      "name": "Chromatic Resistance",
+      "type": "Flask",
+      "score": 2000,
+      "onetime": true,
+      "imageUrl": "https://wow.zamimg.com/images/wow/icons/large/inv_potion_48.jpg",
+   },
    "24870": {
       "name": "Well Fed (?? sta, ?? spi)",
       "type": "Food",

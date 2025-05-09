@@ -502,7 +502,7 @@ local function RaidLogger_Commands(msg)
         lootMismatchs = 0
         RaidLogger:Post(0, nil, SYNC_CHECK, VERSION) 
     elseif  "TOTEMS" == cmd then
-        RaidLogger:PrintTotemUptimeForLastRaid()
+        RaidLogger:PrintTotemUptimeForLastRaid(arg1 and tonumber(arg1))
     elseif  "RESYNC" == cmd then
         if arg1 and string.len(arg1) > 0 then
             RaidLoggerStore.activeRaid.loot = {}
@@ -960,15 +960,16 @@ local function UptimeTextSeconds(uptimeSec, combatTime, totem)
     return UptimeText(uptimePercent, totem)
 end
 
-function RaidLogger:PrintTotemUptimeForLastRaid()
+function RaidLogger:PrintTotemUptimeForLastRaid(n)
     local raid = RaidLoggerStore.activeRaid
     if not raid then
-        raid = RaidLoggerStore.raids[#RaidLoggerStore.raids]
+        raid = RaidLoggerStore.raids[#RaidLoggerStore.raids - (n or 0)]
     end
     if not raid.totemStats then
         out("No totem stats available.")
         return
     end
+    out("Totem uptime for " .. raid.date .. " (" .. raid.zone .. ")")
     local shamanUptime = RaidLogger:CalcAverageUptimePerShaman(raid.totemStats)
     local printOrder = { "wf", "str", "agi", "fr", "frr", "gnd" }
     for _, totem in pairs(printOrder) do
